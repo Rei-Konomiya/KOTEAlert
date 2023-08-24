@@ -1,12 +1,15 @@
 #include "user_sd.h"
 #include <Arduino.h>
 #include <M5Unified.h>
-//#include <M5Stack.h>
 #include <SPI.h>
 #include <SD.h>
 
 UserManagement::UserManagement(void) {}
 UserManagement UM;
+
+bool UserManagement::SDEnable() {
+  return SD.begin(GPIO_NUM_4, SPI, 25000000);
+}
 
 bool UserManagement::saveUserData(uint8_t fingerUserID, String functionsUserID, String functionsUserName) {
   File myFile;
