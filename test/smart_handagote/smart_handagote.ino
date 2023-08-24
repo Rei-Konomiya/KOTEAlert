@@ -19,6 +19,7 @@
 #define ANALOG_MAX 4095
 #define TURN_OFF_TIME (1000 * 60 * 5)
 
+bool sensorFlg = false;
 double duration = 0;
 double distance = 0;                      // 距離
 double speed_of_sound = 331.5 + 0.6 * 25; // 25℃の気温の想定
@@ -54,25 +55,36 @@ float calcResistorByAnalogValue(uint16_t analog, uint16_t analogMax,
 }
 
 // はんだごてのセンサーを監視するタスク
-void solderingSensor(void *parameter) {
-  digitalWrite(TRIG, LOW); 
-  delayMicroseconds(2); 
-  digitalWrite( TRIG, HIGH );
-  delayMicroseconds( 10 ); 
-  digitalWrite( TRIG, LOW );
-  duration = pulseIn( ECHO, HIGH ); // 往復にかかった時間が返却される[マイクロ秒]
+void solderingSensorTask(void *parameter) {
+  while (true) {
+    digitalWrite(TRIG, LOW); 
+    delayMicroseconds(2); 
+    digitalWrite( TRIG, HIGH );
+    delayMicroseconds( 10 ); 
+    digitalWrite( TRIG, LOW );
+    duration = pulseIn( ECHO, HIGH ); // 往復にかかった時間が返却される[マイクロ秒]
 
-  if (duration > 0) {
-    duration = duration / 2; // 往路にかかった時間
-    distance = duration * speed_of_sound * 100 / 1000000;
+    if (duration > 0) {
+      duration = duration / 2; // 往路にかかった時間
+      distance = duration * speed_of_sound * 100 / 1000000;
+    }
+
+    uint16_t valAnalog = analogRead(PIN_THERMISTOR);
+    float resistor =
+        calcResistorByAnalogValue(valAnalog, ANALOG_MAX, RESISTOR_PULL_DOWN);
+    temperature = calcTempratureByResistor(resistor, THERMISTOR_B,
+                                                 THERMISTOR_R0, THERMISTOR_T0);
+
+    if (sensorFlg) {
+      M5.Lcd.setTextColor(GREEN);
+      M5.Lcd.fillRect(0, 20, 350, 300, BLACK);
+      M5.Lcd.setCursor(0, 20);
+      M5.Lcd.setTextFont(2);
+      M5.Lcd.print("temp:");
+      M5.Lcd.println(temperature);
+    }
+    delay(1000);
   }
-
-  uint16_t valAnalog = analogRead(PIN_THERMISTOR);
-  float resistor =
-      calcResistorByAnalogValue(valAnalog, ANALOG_MAX, RESISTOR_PULL_DOWN);
-  temperature = calcTempratureByResistor(resistor, THERMISTOR_B,
-                                               THERMISTOR_R0, THERMISTOR_T0);
-  delay(100);
 }
 
 // 画面の初期化
@@ -116,9 +128,9 @@ void setup() {
 
   // センサータスクの作成
   xTaskCreate(
-      solderingSensor,        /* タスク関数 */
-      "solderingSensor",     /* タスク名 */
-      10000,        /* スタックサイズ */
+      solderingSensorTask,        /* タスク関数 */
+      "solderingSensorTask",     /* タスク名 */
+      1000,        /* スタックサイズ */
       NULL,         /* タスクのパラメータ */
       1,            /* このタスクの優先度 */
       NULL          /* タスクハンドル */
@@ -214,7 +226,7 @@ void registerUser() {
       if (res == ACK_SUCCESS) {
         M5.Lcd.println("Add User");
         if (!UM_S.saveUserData(fingeruid, funcuid, uname)) {
-          M5.Lcd.println("No SD Data");
+          M5.Lcd.println("Fail SD write");
           FP_M.fpm_deleteUser(fingeruid);
         }
       } else {
@@ -299,12 +311,15 @@ void solderingStart() {
     cleanScreen();
     M5.Lcd.println("Using Name: " + fuserName);
     M5.Lcd.println("Soldering Screen");
+    delay(2000);
+    sensorFlg = true;
     currentScreens = SOLDERING;
   }
 }
 
 // はんだごて使用終了
 void solderingFinish() {
+  sensorFlg = false;
   forgetTurnOffAlert();
   String postData = "{\"" + logID + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
