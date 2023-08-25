@@ -34,6 +34,9 @@ void setup() {
 
   String postData = "{\"user_id\": \"" + user_id + "\", \"device_id\": \"" + device_id + "\"}";
   String result = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+  M5.Lcd.println(postData);
+  M5.Lcd.println(String(functionsUrl));
+  M5.Lcd.println(String(startEndpoint));
 
   M5.Lcd.println(result);
   Serial.println(result);
