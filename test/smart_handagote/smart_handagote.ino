@@ -15,8 +15,6 @@
 
 #define TURN_OFF_TIME (1000 * 60 * 5)
 
-bool sensorFlg = false;
-
 enum Screens {
   STANDBY,
   SETTING,
@@ -25,12 +23,12 @@ enum Screens {
 
 Screens currentScreens = STANDBY;
 
+bool sensorDispFlg = false;   // センサー値を読み取るかどうか
 uint8_t userNum;              // ユーザー数
 uint8_t currentUID;           // 指紋モジュールのユーザーID
 String fuserID;               // FunctionsのユーザーID
 String fuserName;             // Functionsのユーザー名
 String logID;                 // FunctionsのログID
-uint8_t fingerResult;         // 指紋モジュール結果
 FingerPrint FP_M;             // 指紋モジュール通信インスタンス
 UserManagement UM_S;          // SDカードユーザー管理インスタンス
 SolderingSensor SS_S;         // はんだごてセンサー類インスタンス
@@ -39,7 +37,7 @@ FunctionsTransmission FT_S;   // Cloud Functions通信インスタンス
 // はんだごてのセンサーを監視するタスク
 void solderingSensorTask(void *parameter) {
   while (true) {
-    if (sensorFlg) {
+    if (sensorDispFlg) {
       M5.Lcd.setTextColor(GREEN);
       M5.Lcd.fillRect(0, 20, 350, 300, BLACK);
       M5.Lcd.setCursor(0, 20);
@@ -227,8 +225,8 @@ String getUserNameBLE() {
 // ユーザー認証
 void authenticateUser() {
   M5.Lcd.println("Matching");
-  fingerResult = FP_M.fpm_compareFinger();
-  if (fingerResult == ACK_SUCCESS) {
+  uint8_t res = FP_M.fpm_compareFinger();
+  if (res == ACK_SUCCESS) {
       M5.Lcd.println("Success");
       currentUID = FP_M.getUID();
       M5.Lcd.println(currentUID);
@@ -240,10 +238,10 @@ void authenticateUser() {
 
       }
   }
-  if (fingerResult == ACK_NOUSER) {
+  if (res == ACK_NOUSER) {
       M5.Lcd.println("No Such User");
   }
-  if (fingerResult == ACK_TIMEOUT) {
+  if (res == ACK_TIMEOUT) {
       M5.Lcd.println("Timeout");
   }
 }
@@ -275,14 +273,14 @@ void solderingStart() {
     M5.Lcd.println("Using Name: " + fuserName);
     M5.Lcd.println("Soldering Screen");
     delay(2000);
-    sensorFlg = true;
+    sensorDispFlg = true;
     currentScreens = SOLDERING;
   }
 }
 
 // はんだごて使用終了
 void solderingFinish() {
-  sensorFlg = false;
+  sensorDispFlg = false;
   forgetTurnOffAlert();
   String postData = "{\"" + logID + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
