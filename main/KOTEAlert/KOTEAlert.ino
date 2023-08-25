@@ -65,6 +65,7 @@ void draw_wifi(){
 * タブ全体のスプライトを作る・表示するメソッド
 */
 void draw_btn(String tabA, String tabB, String tabC){
+  draw_wifi();
   tabName.clear(BLACK);
   String btnName[] = {tabA, tabB, tabC};
   for(int i=0; i<3; i++){
@@ -453,7 +454,7 @@ void fingerPrint(){
     home.println("指紋を登録します");
     home.println("センサーに指を");
     home.print("あてつづけて");
-    home.println("動かさないようにしてください");
+    home.println("ください");
     home.pushSprite(&lcd, 0, 0);
     uint8_t fingeruid = userNum+1;
     uint8_t res     = FP_M.fpm_addUser(fingeruid, 1);
