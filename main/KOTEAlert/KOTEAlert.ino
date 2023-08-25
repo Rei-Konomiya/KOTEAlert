@@ -19,7 +19,8 @@ enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
 
 bool sensorDispFlg = false;   // センサー値を読み取るかどうか
-int returnTime = 0;           // はんだごての納刀時間
+unsigned long startTime;      // はんだごての使用開始時間
+unsigned long returnStartTime;     // はんだごての納刀開始時間
 uint8_t userNum;              // ユーザー数
 uint8_t currentUID;           // 指紋モジュールのユーザーID
 String fuserID;               // FunctionsのユーザーID
@@ -92,12 +93,14 @@ void solderingSensorTask(void *parameter) {
   while (true) {
     if (sensorDispFlg) {
       if (SS_S.readDistance() < 5.0) {
-        returnTime++;
+        
       } else {
-        returnTime = 0;
+        returnStartTime = millis();
       }
+    } else {
+      
     }
-    delay(1000);
+    delay(300);
   }
 }
 
@@ -171,44 +174,18 @@ void setup() {
     M5.Lcd.println("SD disable");
   }
 
-  currentUID = 2;
-
-  String userData = UM_S.getUserData(currentUID);
-
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, userData);
-  fuserID = doc["functionsUserID"].as<String>();
-  fuserName = doc["functionsUserName"].as<String>();
-
-  delay(1000);
-
-  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
-  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
-
-  M5.Lcd.println(response);
-  M5.Lcd.println(String(functionsUrl));
-  delay(1000);
-  //M5.Lcd.println()
-  // home.clear(BLACK);
-  // home.setCursor(0, 0);
-  // home.println(response);
-  // home.println(String(functionsUrl));
-  // home.println(String(startEndpoint));
-  // home.pushSprite(&lcd, 0, 0);
-  // delay(20000);
-
   // センサータスクの作成
   xTaskCreate(
       solderingSensorTask,        /* タスク関数 */
       "solderingSensorTask",     /* タスク名 */
       1000,        /* スタックサイズ */
       NULL,         /* タスクのパラメータ */
-      1,            /* このタスクの優先度 */
+      2,            /* このタスクの優先度 */
       NULL          /* タスクハンドル */
   );
 
   // WiFi接続確認のタスク作成
-  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 2, NULL);
+  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 1, NULL);
 }
 
 void loop() {
@@ -265,11 +242,14 @@ void solderingScreen() {
   double KOTEdepth = 0;
   double KOTEtemp = 0;
   int useTime = 0;
+  int returnTime = 0;
   const int timeOut = 60;
   boolean finish = false;
   draw_btn("終了", "", "");
 
   while(true){
+    useTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
+    returnTime = (int)((millis() - startTime) / 1000 + 0.5);
     home.clear(BLACK);
     home.setCursor(0, 0);
     home.print("使用者　：");
@@ -277,12 +257,10 @@ void solderingScreen() {
     home.print("温度　　：");
     home.println(SS_S.readTemperature());
     home.print("納刀時間：");
-    home.println(returnTime);
-    home.print("使用時間：");
     home.println(useTime);
+    home.print("使用時間：");
+    home.println(returnTime);
     home.pushSprite(&lcd, 0, 0);
-
-    useTime++;
 
     for(int i=0; i<1000; i++){
       M5.update();
@@ -650,6 +628,8 @@ void solderingStart() {
   } else {
     logID = response.substring(2, response.length() - 2);
     sensorDispFlg = true;
+    startTime = millis();
+    returnStartTime = millis();
     currentScreens = SOLDERING;
   }
 }
@@ -699,7 +679,7 @@ void forgetTurnOffAlert() {
   home.println(String(functionsUrl));
   home.println(String(startEndpoint));
   home.pushSprite(&lcd, 0, 0);
-  delay(20000);
+  delay(2000);
 
   if (response != "Internal Server Error") {
     //M5.Lcd.println("handa alert.");
