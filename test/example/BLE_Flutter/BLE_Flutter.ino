@@ -8,7 +8,8 @@ String inTiming = "mix";
 
 
 //以下BLE接続
-#define DEVICE_NAME "BLE-ESP32"
+//#define DEVICE_NAME "BLE-ESP32"
+#define DEVICE_NAME "travel_mate"
 #define SERVICE_UUID "7c68efdd-a727-4b51-ba18-a3519164875c"  // サービスのUUID
 
 // Bluetoothのパケットサイズ
