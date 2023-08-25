@@ -19,8 +19,9 @@ enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
 
 bool sensorDispFlg = false;   // センサー値を読み取るかどうか
+float temperature = 0.0;      // 温度
 unsigned long startTime;      // はんだごての使用開始時間
-unsigned long returnStartTime;     // はんだごての納刀開始時間
+unsigned long returnStartTime;// はんだごての納刀開始時間
 uint8_t userNum;              // ユーザー数
 uint8_t currentUID;           // 指紋モジュールのユーザーID
 String fuserID;               // FunctionsのユーザーID
@@ -92,9 +93,15 @@ void draw_home(){
 void solderingSensorTask(void *parameter) {
   while (true) {
     if (sensorDispFlg) {
-      if (SS_S.readDistance() < 5.0) {
-        
+      temperature = SS_S.readTemperature();
+      if (SS_S.readDistance() < 5.0 /*&& temperature > 50*/) {
+        // はんだ放置中
       } else {
+        // はんだ使用中
+
+
+
+
         returnStartTime = millis();
       }
     } else {
@@ -136,7 +143,7 @@ void WiFiConnect() {
 }
 
 void setup() {
-  Serial.begin(115200); // シリアル通信の開始
+  Serial.begin(115200);
   delay(10);
 
   auto cfg = M5.config();
@@ -145,34 +152,43 @@ void setup() {
 
   WiFiConnect();
 
-  delay(1000);
+  delay(100);
+
+  // while (FP_M.fpm_getUserNum() == 255) {
+  //   M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+  //   M5.Lcd.setCursor(0, 20);
+  //   M5.Lcd.setTextFont(2);
+  //   M5.Lcd.println("disable finger module");
+  //   delay(500);
+  // }
+
+  FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
+
+  SS_S.attach(TRIG, ECHO, THERMISTOR);
+
+  while (!UM_S.SDEnable()) {
+    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("SD disable");
+    delay(500);
+  }
 
   lcd.begin();
   lcd.setBrightness(64);
 
-  delay(1000);
+  delay(100);
 
-  delay(1000);
   tabName.setColorDepth(8);
   tabName.createSprite(310, 60);
-  delay(1000);
   home.setColorDepth(8);
   home.createSprite(lcd.width()-25, 180);
-  delay(1000);
   wifiImage.setColorDepth(8);
   wifiImage.createSprite(25, 15);
 
   delay(100);
   Serial2.begin(19200, SERIAL_8N1, 3, 1);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
   delay(1000);
-  FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
-
-  SS_S.attach(TRIG, ECHO, THERMISTOR);
-
-  while (!UM_S.SDEnable()) {
-    delay(500);
-    M5.Lcd.println("SD disable");
-  }
 
   // センサータスクの作成
   xTaskCreate(
@@ -213,6 +229,7 @@ void loop() {
 void standbyScreen() {
   if (M5.BtnA.wasPressed()) {
     draw_btn("", "", "中止");
+    FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
     registerUser();
   }
   if (M5.BtnB.wasPressed()) {
@@ -248,18 +265,18 @@ void solderingScreen() {
   draw_btn("終了", "", "");
 
   while(true){
-    useTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
-    returnTime = (int)((millis() - startTime) / 1000 + 0.5);
+    returnTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
+    useTime = (int)((millis() - startTime) / 1000 + 0.5);
     home.clear(BLACK);
     home.setCursor(0, 0);
     home.print("使用者　：");
     home.println(fuserName);
     home.print("温度　　：");
-    home.println(SS_S.readTemperature());
+    home.println(temperature);
     home.print("納刀時間：");
-    home.println(useTime);
-    home.print("使用時間：");
     home.println(returnTime);
+    home.print("使用時間：");
+    home.println(useTime);
     home.pushSprite(&lcd, 0, 0);
 
     for(int i=0; i<1000; i++){
@@ -275,6 +292,12 @@ void solderingScreen() {
         while(true){
           M5.update();
           if(M5.BtnA.wasPressed()){
+            home.clear(BLACK);
+            home.setCursor(0, 0);
+            home.println("KOTEの使用を");
+            home.println("終了します");
+            home.pushSprite(&lcd, 0, 0);
+            draw_btn("", "", "");
             solderingFinish();
             return;
           }
@@ -448,7 +471,7 @@ void fingerPrint(){
         home.setCursor(0, 0);
         home.println("指紋情報　登録完了");
         home.pushSprite(&lcd, 0, 0);
-        delay(2000);
+        delay(1500);
         inited = true;
       }
     } else if (res == ACK_FAIL) {
@@ -549,8 +572,8 @@ void authenticateUser() {
     currentUID = FP_M.getUID();
     home.clear(BLACK);
     home.setCursor(0, 0);
-    home.println("ユーザー情報　受取完了");
-    home.println(String(currentUID));
+    home.println("認証成功");
+    //home.println(String(currentUID));
     home.pushSprite(&lcd, 0, 0);
     wait(2000);
     if (UM_S.existUserData(currentUID)) {
@@ -609,14 +632,6 @@ void solderingStart() {
   String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
 
-  home.clear(BLACK);
-  home.setCursor(0, 0);
-  home.println(response);
-  home.println(String(functionsUrl));
-  home.println(String(startEndpoint));
-  home.pushSprite(&lcd, 0, 0);
-  delay(2000);
-
   if (response == "User not found") {
     // Functions側で存在しないユーザー
   } else if (response == "User not authorized") {
@@ -640,14 +655,6 @@ void solderingFinish() {
   String postData = "{\"" + logID + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
 
-  home.clear(BLACK);
-  home.setCursor(0, 0);
-  home.println(response);
-  home.println(String(functionsUrl));
-  home.println(String(startEndpoint));
-  home.pushSprite(&lcd, 0, 0);
-  delay(2000);
-
   if (response != "Internal Server Error") {
     home.clear(BLACK);
     home.setCursor(0, 0);
@@ -664,6 +671,7 @@ void solderingFinish() {
 
 // はんだごて切り忘れ通知
 void forgetTurnOffAlert() {
+  draw_btn("", "", "");
   home.clear(BLACK);
   home.setCursor(0, 0);
   home.println("放置時間が一定時間");
@@ -672,14 +680,6 @@ void forgetTurnOffAlert() {
   home.pushSprite(&lcd, 0, 0);
   String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\", \"" + logID + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(alertEndpoint), postData);
-
-  home.clear(BLACK);
-  home.setCursor(0, 0);
-  home.println(response);
-  home.println(String(functionsUrl));
-  home.println(String(startEndpoint));
-  home.pushSprite(&lcd, 0, 0);
-  delay(2000);
 
   if (response != "Internal Server Error") {
     //M5.Lcd.println("handa alert.");
