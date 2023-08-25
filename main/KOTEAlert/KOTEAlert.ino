@@ -19,6 +19,7 @@ enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
 
 bool sensorDispFlg = false;   // センサー値を読み取るかどうか
+int returnTime = 0;           // はんだごての納刀時間
 uint8_t userNum;              // ユーザー数
 uint8_t currentUID;           // 指紋モジュールのユーザーID
 String fuserID;               // FunctionsのユーザーID
@@ -31,8 +32,6 @@ SolderingSensor SS_S;         // はんだごてセンサー類インスタン�
 FunctionsTransmission FT_S;   // Cloud Functions通信インスタンス
 
 M5GFX lcd;                    // 直接表示のインスタンスを作成（M5GFXクラスを使ってlcdコマンドでいろいろできるようにする）
-M5Canvas tab(&lcd);
-M5Canvas selecting(&lcd);
 M5Canvas tabName(&lcd);
 M5Canvas home(&lcd);
 M5Canvas wifiImage(&lcd);
@@ -61,24 +60,15 @@ void draw_wifi(){
 }
 
 /*
-* 選択されていないタブのスプライトを作るメソッド
-*/
-void draw_tab(){
-  tab.clear(BLACK);
-  tab.fillRoundRect (0, 0, 100, 100, 20, DARKCYAN);
-  tab.fillRoundRect (2, 2, 96, 96, 18, BLACK);
-}
-
-/*
 * タブ全体のスプライトを作る・表示するメソッド
 */
 void draw_btn(String tabA, String tabB, String tabC){
   tabName.clear(BLACK);
-  draw_tab();
   String btnName[] = {tabA, tabB, tabC};
   for(int i=0; i<3; i++){
     if(btnName[i] != ""){
-      tab.pushSprite(&tabName, 105*i, 0);
+      tabName.fillRoundRect (105*i, 0, 100, 100, 20, DARKCYAN);
+      tabName.fillRoundRect (105*i+2, 2, 96, 96, 18, BLACK);
       tabName.setTextColor(WHITE);
       
       tabName.setFont(&fonts::lgfxJapanGothic_36);
@@ -101,12 +91,11 @@ void draw_home(){
 void solderingSensorTask(void *parameter) {
   while (true) {
     if (sensorDispFlg) {
-      M5.Lcd.setTextColor(GREEN);
-      M5.Lcd.fillRect(0, 20, 350, 300, BLACK);
-      M5.Lcd.setCursor(0, 20);
-      M5.Lcd.setTextFont(2);
-      M5.Lcd.print("temp:");
-      M5.Lcd.println(SS_S.readTemperature());
+      if (SS_S.readDistance() < 5.0) {
+        returnTime++;
+      } else {
+        returnTime = 0;
+      }
     }
     delay(1000);
   }
@@ -137,30 +126,40 @@ void WiFiConnectionTask(void *parameter) {
 }
 
 void WiFiConnect() {
-
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+  }
 }
 
 void setup() {
+  Serial.begin(115200); // シリアル通信の開始
+  delay(10);
+
   auto cfg = M5.config();
   cfg.clear_display = true;
   M5.begin(cfg);
 
+  WiFiConnect();
+
+  delay(1000);
+
   lcd.begin();
   lcd.setBrightness(64);
 
-  tab.setColorDepth(8);
-  tab.createSprite(100, 60);
-  selecting.setColorDepth(8);
-  selecting.createSprite(100, 60);
+  delay(1000);
+
+  delay(1000);
   tabName.setColorDepth(8);
   tabName.createSprite(310, 60);
+  delay(1000);
   home.setColorDepth(8);
   home.createSprite(lcd.width()-25, 180);
+  delay(1000);
   wifiImage.setColorDepth(8);
   wifiImage.createSprite(25, 15);
 
   delay(100);
-
   Serial2.begin(19200, SERIAL_8N1, 3, 1);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
   delay(1000);
   FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
@@ -172,20 +171,44 @@ void setup() {
     M5.Lcd.println("SD disable");
   }
 
+  currentUID = 2;
+
+  String userData = UM_S.getUserData(currentUID);
+
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, userData);
+  fuserID = doc["functionsUserID"].as<String>();
+  fuserName = doc["functionsUserName"].as<String>();
+
+  delay(1000);
+
+  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
+  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+
+  M5.Lcd.println(response);
+  M5.Lcd.println(String(functionsUrl));
+  delay(1000);
+  //M5.Lcd.println()
+  // home.clear(BLACK);
+  // home.setCursor(0, 0);
+  // home.println(response);
+  // home.println(String(functionsUrl));
+  // home.println(String(startEndpoint));
+  // home.pushSprite(&lcd, 0, 0);
+  // delay(20000);
+
   // センサータスクの作成
   xTaskCreate(
       solderingSensorTask,        /* タスク関数 */
       "solderingSensorTask",     /* タスク名 */
-      10000,        /* スタックサイズ */
+      1000,        /* スタックサイズ */
       NULL,         /* タスクのパラメータ */
       1,            /* このタスクの優先度 */
       NULL          /* タスクハンドル */
   );
 
-  WiFiConnect();
-
   // WiFi接続確認のタスク作成
-  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 10000, NULL, 2, NULL);
+  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 2, NULL);
 }
 
 void loop() {
@@ -216,7 +239,7 @@ void standbyScreen() {
     registerUser();
   }
   if (M5.BtnB.wasPressed()) {
-    //authenticateUser();
+    authenticateUser();
   }
   if (M5.BtnC.wasPressed()) {
     //currentScreens = SETTING;
@@ -238,14 +261,66 @@ void settingScreen() {
 
 // はんだごて使用中画面
 void solderingScreen() {
-  if (M5.BtnA.wasPressed()) {
-    //solderingFinish();
-  }
-  if (M5.BtnB.wasPressed()) {
-    // 空き
-  }
-  if (M5.BtnC.wasPressed()) {
-    // 空き
+  home.setFont(&fonts::lgfxJapanGothic_24);
+  double KOTEdepth = 0;
+  double KOTEtemp = 0;
+  int useTime = 0;
+  const int timeOut = 60;
+  boolean finish = false;
+  draw_btn("終了", "", "");
+
+  while(true){
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.print("使用者　：");
+    home.println(fuserName);
+    home.print("温度　　：");
+    home.println(SS_S.readTemperature());
+    home.print("納刀時間：");
+    home.println(returnTime);
+    home.print("使用時間：");
+    home.println(useTime);
+    home.pushSprite(&lcd, 0, 0);
+
+    useTime++;
+
+    for(int i=0; i<1000; i++){
+      M5.update();
+      if(M5.BtnA.wasPressed()){
+        home.clear(BLACK);
+        home.setCursor(0, 0);
+        home.println("KOTEの使用を");
+        home.println("終了しますか？");
+        home.pushSprite(&lcd, 0, 0);
+        draw_btn("終了", "続行", "");
+
+        while(true){
+          M5.update();
+          if(M5.BtnA.wasPressed()){
+            solderingFinish();
+            return;
+          }
+          if(M5.BtnB.wasPressed()){
+            home.clear(BLACK);
+            home.setCursor(0, 0);
+            home.println("KOTEを使用続行します");
+            home.pushSprite(&lcd, 0, 0);
+            draw_btn("終了", "", "");
+            break;
+          }
+        }
+      }
+      delay(1);
+    }
+
+    if(returnTime >= timeOut){
+      if(wifiConnect){
+        forgetTurnOffAlert();
+        solderingFinish();
+        currentScreens = STANDBY;
+        return;
+      }
+    }
   }
 }
 
@@ -479,5 +554,157 @@ void fingerPrint(){
       if(timeCount > 5) initFail = true;
       else inited = true;
     }
+  }
+}
+
+// ユーザー認証
+void authenticateUser() {
+  home.setFont(&fonts::lgfxJapanGothic_24);
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println("指紋認証を行います");
+  home.println("センサーに指を");
+  home.print("あててください");
+  home.pushSprite(&lcd, 0, 0);
+  uint8_t res = FP_M.fpm_compareFinger();
+  if (res == ACK_SUCCESS) {
+    currentUID = FP_M.getUID();
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("ユーザー情報　受取完了");
+    home.println(String(currentUID));
+    home.pushSprite(&lcd, 0, 0);
+    wait(2000);
+    if (UM_S.existUserData(currentUID)) {
+      solderingStart();
+      delay(1000);
+    } else {
+      home.clear(BLACK);
+      home.setCursor(0, 0);
+      home.println("モジュールには登録されていますが、");
+      home.println("SDカードに保存されていません");
+      home.println("ホーム画面に戻ります");
+      home.pushSprite(&lcd, 0, 0);
+      delay(2000);
+      return;
+    }
+  }
+  if (res == ACK_NOUSER) {
+      home.clear(BLACK);
+      home.setCursor(0, 0);
+      home.println("認証に失敗しました");
+      home.println("ホーム画面に戻ります");
+      home.pushSprite(&lcd, 0, 0);
+      delay(2000);
+      return;
+  }
+  if (res == ACK_TIMEOUT) {
+      home.clear(BLACK);
+      home.setCursor(0, 0);
+      home.println("タイムアウトしました");
+      home.println("ホーム画面に戻ります");
+      home.pushSprite(&lcd, 0, 0);
+      delay(2000);
+      return;
+  }
+}
+
+// はんだごて使用開始
+void solderingStart() {
+  String userData = UM_S.getUserData(currentUID);
+
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, userData);
+  fuserID = doc["functionsUserID"].as<String>();
+  fuserName = doc["functionsUserName"].as<String>();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("WiFi接続されていません");
+    home.pushSprite(&lcd, 0, 0);
+    delay(30000);
+  }
+
+  delay(1000);
+
+  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
+  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println(response);
+  home.println(String(functionsUrl));
+  home.println(String(startEndpoint));
+  home.pushSprite(&lcd, 0, 0);
+  delay(2000);
+
+  if (response == "User not found") {
+    // Functions側で存在しないユーザー
+  } else if (response == "User not authorized") {
+    // 承認されていないユーザー
+  } else if (response == "reservation exists") {
+    // ほかに予約している人がいる
+  } else if (response == "Internal Server Error") {
+    // 接続エラー
+  } else {
+    logID = response.substring(2, response.length() - 2);
+    sensorDispFlg = true;
+    currentScreens = SOLDERING;
+  }
+}
+
+// はんだごて使用終了
+void solderingFinish() {
+  sensorDispFlg = false;
+  String postData = "{\"" + logID + "\"}";
+  String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
+
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println(response);
+  home.println(String(functionsUrl));
+  home.println(String(startEndpoint));
+  home.pushSprite(&lcd, 0, 0);
+  delay(2000);
+
+  if (response != "Internal Server Error") {
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("KOTEの使用を");
+    home.println("終了しました");
+    home.pushSprite(&lcd, 0, 0);
+    delay(3000);
+    currentScreens = STANDBY;
+  } else {
+    M5.Lcd.println("Server Error.");
+    //solderingFinish();
+  }
+}
+
+// はんだごて切り忘れ通知
+void forgetTurnOffAlert() {
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println("放置時間が一定時間");
+  home.println("を超えたため");
+  home.println("強制終了します");
+  home.pushSprite(&lcd, 0, 0);
+  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\", \"" + logID + "\"}";
+  String response = FT_S.functions_post(String(functionsUrl), String(alertEndpoint), postData);
+
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println(response);
+  home.println(String(functionsUrl));
+  home.println(String(startEndpoint));
+  home.pushSprite(&lcd, 0, 0);
+  delay(20000);
+
+  if (response != "Internal Server Error") {
+    //M5.Lcd.println("handa alert.");
+  } else {
+    M5.Lcd.println("Server Error.");
+    //forgetTurnOffAlert();
   }
 }
