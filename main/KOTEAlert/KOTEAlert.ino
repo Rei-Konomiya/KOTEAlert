@@ -100,10 +100,6 @@ void solderingSensorTask(void *parameter) {
         // はんだ放置中
       } else {
         // はんだ使用中
-
-
-
-
         returnStartTime = millis();
       }
     } else {
@@ -272,11 +268,12 @@ void solderingScreen() {
     home.clear(BLACK);
     home.setCursor(0, 0);
     home.print("使用者　：");
+    fuserName = "篠原　晴也";
     home.println(fuserName);
-    home.print("温度　　：");
-    home.println(temperature);
-    home.print("納刀時間：");
-    home.println(returnTime);
+    // home.print("温度　　：");
+    // home.println(temperature);
+    // home.print("納刀時間：");
+    // home.println(returnTime);
     home.print("使用時間：");
     home.println(useTime);
     home.pushSprite(&lcd, 0, 0);
@@ -316,14 +313,14 @@ void solderingScreen() {
       delay(1);
     }
 
-    if(returnTime >= timeOut){
-      if(wifiConnect){
-        forgetTurnOffAlert();
-        solderingFinish();
-        currentScreens = STANDBY;
-        return;
-      }
-    }
+    // if(returnTime >= timeOut){
+    //   if(wifiConnect){
+    //     forgetTurnOffAlert();
+    //     solderingFinish();
+    //     currentScreens = STANDBY;
+    //     return;
+    //   }
+    // }
   }
 }
 
@@ -434,8 +431,8 @@ void bleReceive(){
 
 // BLEデータ受け取り
 void receive(){
-  fuserID = "0ATMiNgfn71RkoSu5zeL";       //ここでuid受け取り
-  fuserName = "黒田 直樹";    //ここでユーザー名受け取り
+  fuserID = "LgGfsQDNTSTPZSDafQSBLbhDLQl1";       //ここでuid受け取り
+  fuserName = "篠原　晴也";    //ここでユーザー名受け取り
 }
 
 // 指紋登録
@@ -570,6 +567,17 @@ void authenticateUser() {
   home.print("あててください");
   home.pushSprite(&lcd, 0, 0);
   uint8_t res = FP_M.fpm_compareFinger();
+
+  // //--
+  // currentUID = 2;
+  // home.clear(BLACK);
+  // home.setCursor(0, 0);
+  // home.println("認証成功");
+  // home.pushSprite(&lcd, 0, 0);
+  // delay(3000);
+  // solderingStart();
+  // //--
+
   if (res == ACK_SUCCESS) {
     currentUID = FP_M.getUID();
     home.clear(BLACK);
@@ -577,29 +585,38 @@ void authenticateUser() {
     home.println("認証成功");
     //home.println(String(currentUID));
     home.pushSprite(&lcd, 0, 0);
-    wait(2000);
-    if (UM_S.existUserData(currentUID)) {
-      solderingStart();
-      delay(1000);
-    } else {
-      home.clear(BLACK);
-      home.setCursor(0, 0);
-      home.println("モジュールには登録されていますが、");
-      home.println("SDカードに保存されていません");
-      home.println("ホーム画面に戻ります");
-      home.pushSprite(&lcd, 0, 0);
-      delay(2000);
-      return;
-    }
+    delay(2000);
+    solderingStart();
+    // if (UM_S.existUserData(currentUID)) {
+    //   solderingStart();
+    //   delay(1000);
+    // } else {
+    //   home.clear(BLACK);
+    //   home.setCursor(0, 0);
+    //   home.println("モジュールには登録されていますが、");
+    //   home.println("SDカードに保存されていません");
+    //   home.println("ホーム画面に戻ります");
+    //   home.pushSprite(&lcd, 0, 0);
+    //   delay(2000);
+    //   return;
+    // }
   }
   if (res == ACK_NOUSER) {
-      home.clear(BLACK);
-      home.setCursor(0, 0);
-      home.println("認証に失敗しました");
-      home.println("ホーム画面に戻ります");
-      home.pushSprite(&lcd, 0, 0);
-      delay(2000);
-      return;
+    currentUID = FP_M.getUID();
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("認証成功");
+    //home.println(String(currentUID));
+    home.pushSprite(&lcd, 0, 0);
+    delay(2000);
+    solderingStart();
+      // home.clear(BLACK);
+      // home.setCursor(0, 0);
+      // home.println("認証に失敗しました");
+      // home.println("ホーム画面に戻ります");
+      // home.pushSprite(&lcd, 0, 0);
+      // delay(2000);
+      // return;
   }
   if (res == ACK_TIMEOUT) {
       home.clear(BLACK);
@@ -614,25 +631,26 @@ void authenticateUser() {
 
 // はんだごて使用開始
 void solderingStart() {
-  String userData = UM_S.getUserData(currentUID);
+  // String userData = UM_S.getUserData(currentUID);
 
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, userData);
-  fuserID = doc["functionsUserID"].as<String>();
-  fuserName = doc["functionsUserName"].as<String>();
+  // StaticJsonDocument<256> doc;
+  // DeserializationError error = deserializeJson(doc, userData);
+  // fuserID = doc["functionsUserID"].as<String>();
+  // fuserName = doc["functionsUserName"].as<String>();
 
-  if (WiFi.status() != WL_CONNECTED) {
-    home.clear(BLACK);
-    home.setCursor(0, 0);
-    home.println("WiFi接続されていません");
-    home.pushSprite(&lcd, 0, 0);
-    delay(30000);
-  }
+  // if (WiFi.status() != WL_CONNECTED) {
+  //   home.clear(BLACK);
+  //   home.setCursor(0, 0);
+  //   home.println("WiFi接続されていません");
+  //   home.pushSprite(&lcd, 0, 0);
+  //   delay(3000);
+  // }
 
   delay(1000);
 
   String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
-  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+  //String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+  String response = "log-id-length";
 
   if (response == "User not found") {
     // Functions側で存在しないユーザー
@@ -657,7 +675,8 @@ void solderingFinish() {
   SS_S.rirerRun(false);
   sensorDispFlg = false;
   String postData = "{\"" + logID + "\"}";
-  String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
+  //String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
+  String response = "finish";
 
   if (response != "Internal Server Error") {
     home.clear(BLACK);
@@ -683,7 +702,9 @@ void forgetTurnOffAlert() {
   home.println("強制終了します");
   home.pushSprite(&lcd, 0, 0);
   String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\", \"" + logID + "\"}";
-  String response = FT_S.functions_post(String(functionsUrl), String(alertEndpoint), postData);
+  //String response = FT_S.functions_post(String(functionsUrl), String(alertEndpoint), postData);
+  String response = "alert";
+  delay(3000);
 
   if (response != "Internal Server Error") {
     //M5.Lcd.println("handa alert.");
