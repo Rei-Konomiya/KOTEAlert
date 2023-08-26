@@ -12,6 +12,7 @@
 
 #define TRIG 2
 #define ECHO 5
+#define RIRER 23
 #define THERMISTOR 35
 #define TURN_OFF_TIME (1000 * 60 * 5)
 
@@ -165,7 +166,7 @@ void setup() {
 
   FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
 
-  SS_S.attach(TRIG, ECHO, THERMISTOR);
+  SS_S.attach(TRIG, ECHO, RIRER, THERMISTOR);
 
   while (!UM_S.SDEnable()) {
     M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
@@ -646,12 +647,14 @@ void solderingStart() {
     sensorDispFlg = true;
     startTime = millis();
     returnStartTime = millis();
+    SS_S.rirerRun(true);
     currentScreens = SOLDERING;
   }
 }
 
 // はんだごて使用終了
 void solderingFinish() {
+  SS_S.rirerRun(false);
   sensorDispFlg = false;
   String postData = "{\"" + logID + "\"}";
   String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);

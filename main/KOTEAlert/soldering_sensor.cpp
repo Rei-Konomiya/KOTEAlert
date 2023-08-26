@@ -11,9 +11,10 @@
 SolderingSensor::SolderingSensor(void) {}
 SolderingSensor SS_;
 
-void SolderingSensor::attach(int TRIG, int ECHO, int THERMISTOR) {
+void SolderingSensor::attach(int TRIG, int ECHO, int RIRER, int THERMISTOR) {
   this->trig = TRIG;
   this->echo = ECHO;
+  this->rirer = RIRER;
   this->thermistor = THERMISTOR;
   pinMode(this->echo, INPUT);
   pinMode(this->trig, OUTPUT);
@@ -44,6 +45,14 @@ float SolderingSensor::readTemperature() {
   float resistor = calcResistorByAnalogValue(valAnalog, ANALOG_MAX, RESISTOR_PULL_DOWN);
   float temperature = calcTempratureByResistor(resistor, THERMISTOR_B, THERMISTOR_R0, THERMISTOR_T0);
   return temperature;
+}
+
+void SolderingSensor::rirerRun(bool flg){
+  if (flg) {
+    digitalWrite(this->trig, HIGH);
+  } else {
+    digitalWrite(this->trig, LOW); 
+  }
 }
 
 float SolderingSensor::calcTempratureByResistor(float R, int B, int R0, float T0) {
