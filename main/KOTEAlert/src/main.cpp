@@ -655,7 +655,7 @@ void setup() {
   wifiImage.createSprite(25, 15);
 
   delay(100);
-  Serial2.begin(19200, SERIAL_8N1, 3, 1);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
+  Serial2.begin(19200, SERIAL_8N1, 16, 17);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
   delay(1000);
 
   // センサータスクの作成
