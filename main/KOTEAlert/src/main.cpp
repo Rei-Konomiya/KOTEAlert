@@ -144,199 +144,6 @@ void WiFiConnect() {
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(10);
-
-  auto cfg = M5.config();
-  cfg.clear_display = true;
-  M5.begin(cfg);
-
-  WiFiConnect();
-
-  delay(100);
-
-  // while (FP_M.fpm_getUserNum() == 255) {
-  //   M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
-  //   M5.Lcd.setCursor(0, 20);
-  //   M5.Lcd.setTextFont(2);
-  //   M5.Lcd.println("disable finger module");
-  //   delay(500);
-  // }
-
-  FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
-
-  SS_S.attach(TRIG, ECHO, RIRER, THERMISTOR);
-
-  while (!UM_S.SDEnable()) {
-    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
-    M5.Lcd.setCursor(0, 20);
-    M5.Lcd.setTextFont(2);
-    M5.Lcd.println("SD disable");
-    delay(500);
-  }
-
-  lcd.begin();
-  lcd.setBrightness(64);
-
-  delay(100);
-
-  tabName.setColorDepth(8);
-  tabName.createSprite(310, 60);
-  home.setColorDepth(8);
-  home.createSprite(lcd.width()-25, 180);
-  wifiImage.setColorDepth(8);
-  wifiImage.createSprite(25, 15);
-
-  delay(100);
-  Serial2.begin(19200, SERIAL_8N1, 3, 1);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
-  delay(1000);
-
-  // センサータスクの作成
-  xTaskCreate(
-      solderingSensorTask,        /* タスク関数 */
-      "solderingSensorTask",     /* タスク名 */
-      1000,        /* スタックサイズ */
-      NULL,         /* タスクのパラメータ */
-      2,            /* このタスクの優先度 */
-      NULL          /* タスクハンドル */
-  );
-
-  // WiFi接続確認のタスク作成
-  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 1, NULL);
-}
-
-void loop() {
-  switch (currentScreens) {
-    case STANDBY:
-     standbyScreen();
-     break;
-    case SETTING:
-     settingScreen();
-     break;
-    case SOLDERING:
-     solderingScreen();
-     break;
-    default:
-     break;
-  }
-  draw_btn("登録", "使用", "設定");
-  draw_home();
-  while(M5.BtnA.isPressed() || M5.BtnB.isPressed() || M5.BtnC.isPressed()) M5.update();
-  change = false;
-  M5.update();
-}
-
-// 待機画面
-void standbyScreen() {
-  if (M5.BtnA.wasPressed()) {
-    draw_btn("", "", "中止");
-    FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
-    registerUser();
-  }
-  if (M5.BtnB.wasPressed()) {
-    authenticateUser();
-  }
-  if (M5.BtnC.wasPressed()) {
-    //currentScreens = SETTING;
-  }
-}
-
-// 設定画面
-void settingScreen() {
-  if (M5.BtnA.wasPressed()) {
-    //FP_M.fpm_showAllUser();
-  }
-  if (M5.BtnB.wasPressed()) {
-    // 空き
-  }
-  if (M5.BtnC.wasPressed()) {
-    currentScreens = STANDBY;
-  }
-}
-
-// はんだごて使用中画面
-void solderingScreen() {
-  home.setFont(&fonts::lgfxJapanGothic_24);
-  double KOTEdepth = 0;
-  double KOTEtemp = 0;
-  int useTime = 0;
-  int returnTime = 0;
-  const int timeOut = 60;
-  boolean finish = false;
-  draw_btn("終了", "", "");
-
-  while(true){
-    returnTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
-    useTime = (int)((millis() - startTime) / 1000 + 0.5);
-    home.clear(BLACK);
-    home.setCursor(0, 0);
-    home.print("使用者　：");
-    home.println(fuserName);
-    home.print("温度　　：");
-    home.println(temperature);
-    home.print("納刀時間：");
-    home.println(returnTime);
-    home.print("使用時間：");
-    home.println(useTime);
-    home.pushSprite(&lcd, 0, 0);
-
-    for(int i=0; i<1000; i++){
-      M5.update();
-      if(M5.BtnA.wasPressed()){
-        home.clear(BLACK);
-        home.setCursor(0, 0);
-        home.println("KOTEの使用を");
-        home.println("終了しますか？");
-        home.pushSprite(&lcd, 0, 0);
-        draw_btn("終了", "続行", "");
-
-        while(true){
-          M5.update();
-          if(M5.BtnA.wasPressed()){
-            home.clear(BLACK);
-            home.setCursor(0, 0);
-            home.println("KOTEの使用を");
-            home.println("終了します");
-            home.pushSprite(&lcd, 0, 0);
-            draw_btn("", "", "");
-            solderingFinish();
-            return;
-          }
-          if(M5.BtnB.wasPressed()){
-            home.clear(BLACK);
-            home.setCursor(0, 0);
-            home.println("KOTEを使用続行します");
-            home.pushSprite(&lcd, 0, 0);
-            draw_btn("終了", "", "");
-            break;
-          }
-        }
-      }
-      delay(1);
-    }
-
-    if(returnTime >= timeOut){
-      if(wifiConnect){
-        forgetTurnOffAlert();
-        solderingFinish();
-        currentScreens = STANDBY;
-        return;
-      }
-    }
-  }
-}
-
-// ユーザー登録
-void registerUser(){
-  home.setFont(&fonts::lgfxJapanGothic_24);
-  
-  bleConnecting(); //BLE接続
-  if(!change)bleReceive();    //BLE情報受け取り
-  if(!change)fingerPrint();   //指紋登録
-
-}
-
 /*
 * 待機メソッド（delayではボタン判定ができないため代わりにこのメソッドを使う）
 * time : 待機時間
@@ -352,44 +159,10 @@ void wait(int time){
   }
 }
 
-// BLE接続
-void bleConnecting(){
-  boolean BLEconnect = false;   //デバッグ用、実装時は置換する
-  int periodCount = 0;
-  int timeCount = 0;
-  const int timeout = 10;
-
-  while(!BLEconnect){
-    home.clear(BLACK);
-    home.setCursor(0, 0);
-    home.println("スマホとBluetoothを");
-    home.print("接続してください");
-    for(int i=0; i<periodCount; i++) home.print(".");
-    ++periodCount %= 4;
-    home.pushSprite(&lcd, 0, 0);
-    wait(1000);
-    timeCount++;
-    if(timeCount >= timeout){
-      home.clear(BLACK);
-      home.setCursor(0, 0);
-      home.println("タイムアウトしました");
-      home.println("ホーム画面に戻ります");
-      home.pushSprite(&lcd, 0, 0);
-      change = true;
-      delay(2000);
-    }
-    if(change) return;
-    
-    //以下2行はデバッグ用、実装時は削除する
-    M5.update();
-    if(M5.BtnA.isPressed()) BLEconnect = true;
-  }
-  
-  home.clear(BLACK);
-  home.setCursor(0, 0);
-  home.println("Bluetooth接続完了");
-  home.pushSprite(&lcd, 0, 0);
-  wait(2000);
+// BLEデータ受け取り
+void receive(){
+  fuserID = "0ATMiNgfn71RkoSu5zeL";       //ここでuid受け取り
+  fuserName = "黒田 直樹";    //ここでユーザー名受け取り
 }
 
 // BLEデータ受け取り待機
@@ -432,10 +205,44 @@ void bleReceive(){
   wait(2000);
 }
 
-// BLEデータ受け取り
-void receive(){
-  fuserID = "0ATMiNgfn71RkoSu5zeL";       //ここでuid受け取り
-  fuserName = "黒田 直樹";    //ここでユーザー名受け取り
+// BLE接続
+void bleConnecting(){
+  boolean BLEconnect = false;   //デバッグ用、実装時は置換する
+  int periodCount = 0;
+  int timeCount = 0;
+  const int timeout = 10;
+
+  while(!BLEconnect){
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("スマホとBluetoothを");
+    home.print("接続してください");
+    for(int i=0; i<periodCount; i++) home.print(".");
+    ++periodCount %= 4;
+    home.pushSprite(&lcd, 0, 0);
+    wait(1000);
+    timeCount++;
+    if(timeCount >= timeout){
+      home.clear(BLACK);
+      home.setCursor(0, 0);
+      home.println("タイムアウトしました");
+      home.println("ホーム画面に戻ります");
+      home.pushSprite(&lcd, 0, 0);
+      change = true;
+      delay(2000);
+    }
+    if(change) return;
+    
+    //以下2行はデバッグ用、実装時は削除する
+    M5.update();
+    if(M5.BtnA.isPressed()) BLEconnect = true;
+  }
+  
+  home.clear(BLACK);
+  home.setCursor(0, 0);
+  home.println("Bluetooth接続完了");
+  home.pushSprite(&lcd, 0, 0);
+  wait(2000);
 }
 
 // 指紋登録
@@ -560,6 +367,56 @@ void fingerPrint(){
   }
 }
 
+// ユーザー登録
+void registerUser(){
+  home.setFont(&fonts::lgfxJapanGothic_24);
+  
+  bleConnecting(); //BLE接続
+  if(!change)bleReceive();    //BLE情報受け取り
+  if(!change)fingerPrint();   //指紋登録
+
+}
+
+// はんだごて使用開始
+void solderingStart() {
+  String userData = UM_S.getUserData(currentUID);
+
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, userData);
+  fuserID = doc["functionsUserID"].as<String>();
+  fuserName = doc["functionsUserName"].as<String>();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.println("WiFi接続されていません");
+    home.pushSprite(&lcd, 0, 0);
+    delay(30000);
+  }
+
+  delay(1000);
+
+  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
+  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
+
+  if (response == "User not found") {
+    // Functions側で存在しないユーザー
+  } else if (response == "User not authorized") {
+    // 承認されていないユーザー
+  } else if (response == "reservation exists") {
+    // ほかに予約している人がいる
+  } else if (response == "Internal Server Error") {
+    // 接続エラー
+  } else {
+    logID = response.substring(2, response.length() - 2);
+    sensorDispFlg = true;
+    startTime = millis();
+    returnStartTime = millis();
+    SS_S.rirerRun(true);
+    currentScreens = SOLDERING;
+  }
+}
+
 // ユーザー認証
 void authenticateUser() {
   home.setFont(&fonts::lgfxJapanGothic_24);
@@ -612,46 +469,6 @@ void authenticateUser() {
   }
 }
 
-// はんだごて使用開始
-void solderingStart() {
-  String userData = UM_S.getUserData(currentUID);
-
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, userData);
-  fuserID = doc["functionsUserID"].as<String>();
-  fuserName = doc["functionsUserName"].as<String>();
-
-  if (WiFi.status() != WL_CONNECTED) {
-    home.clear(BLACK);
-    home.setCursor(0, 0);
-    home.println("WiFi接続されていません");
-    home.pushSprite(&lcd, 0, 0);
-    delay(30000);
-  }
-
-  delay(1000);
-
-  String postData = "{\"user_id\": \"" + fuserID + "\", \"device_id\": \"" + String(solderingID) + "\"}";
-  String response = FT_S.functions_post(String(functionsUrl), String(startEndpoint), postData);
-
-  if (response == "User not found") {
-    // Functions側で存在しないユーザー
-  } else if (response == "User not authorized") {
-    // 承認されていないユーザー
-  } else if (response == "reservation exists") {
-    // ほかに予約している人がいる
-  } else if (response == "Internal Server Error") {
-    // 接続エラー
-  } else {
-    logID = response.substring(2, response.length() - 2);
-    sensorDispFlg = true;
-    startTime = millis();
-    returnStartTime = millis();
-    SS_S.rirerRun(true);
-    currentScreens = SOLDERING;
-  }
-}
-
 // はんだごて使用終了
 void solderingFinish() {
   SS_S.rirerRun(false);
@@ -692,3 +509,187 @@ void forgetTurnOffAlert() {
     //forgetTurnOffAlert();
   }
 }
+
+// 待機画面
+void standbyScreen() {
+  if (M5.BtnA.wasPressed()) {
+    draw_btn("", "", "中止");
+    FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
+    registerUser();
+  }
+  if (M5.BtnB.wasPressed()) {
+    authenticateUser();
+  }
+  if (M5.BtnC.wasPressed()) {
+    //currentScreens = SETTING;
+  }
+}
+
+// 設定画面
+void settingScreen() {
+  if (M5.BtnA.wasPressed()) {
+    //FP_M.fpm_showAllUser();
+  }
+  if (M5.BtnB.wasPressed()) {
+    // 空き
+  }
+  if (M5.BtnC.wasPressed()) {
+    currentScreens = STANDBY;
+  }
+}
+
+// はんだごて使用中画面
+void solderingScreen() {
+  home.setFont(&fonts::lgfxJapanGothic_24);
+  double KOTEdepth = 0;
+  double KOTEtemp = 0;
+  int useTime = 0;
+  int returnTime = 0;
+  const int timeOut = 60;
+  boolean finish = false;
+  draw_btn("終了", "", "");
+
+  while(true){
+    returnTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
+    useTime = (int)((millis() - startTime) / 1000 + 0.5);
+    home.clear(BLACK);
+    home.setCursor(0, 0);
+    home.print("使用者　：");
+    home.println(fuserName);
+    home.print("温度　　：");
+    home.println(temperature);
+    home.print("納刀時間：");
+    home.println(returnTime);
+    home.print("使用時間：");
+    home.println(useTime);
+    home.pushSprite(&lcd, 0, 0);
+
+    for(int i=0; i<1000; i++){
+      M5.update();
+      if(M5.BtnA.wasPressed()){
+        home.clear(BLACK);
+        home.setCursor(0, 0);
+        home.println("KOTEの使用を");
+        home.println("終了しますか？");
+        home.pushSprite(&lcd, 0, 0);
+        draw_btn("終了", "続行", "");
+
+        while(true){
+          M5.update();
+          if(M5.BtnA.wasPressed()){
+            home.clear(BLACK);
+            home.setCursor(0, 0);
+            home.println("KOTEの使用を");
+            home.println("終了します");
+            home.pushSprite(&lcd, 0, 0);
+            draw_btn("", "", "");
+            solderingFinish();
+            return;
+          }
+          if(M5.BtnB.wasPressed()){
+            home.clear(BLACK);
+            home.setCursor(0, 0);
+            home.println("KOTEを使用続行します");
+            home.pushSprite(&lcd, 0, 0);
+            draw_btn("終了", "", "");
+            break;
+          }
+        }
+      }
+      delay(1);
+    }
+
+    if(returnTime >= timeOut){
+      if(wifiConnect){
+        forgetTurnOffAlert();
+        solderingFinish();
+        currentScreens = STANDBY;
+        return;
+      }
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  auto cfg = M5.config();
+  cfg.clear_display = true;
+  M5.begin(cfg);
+
+  WiFiConnect();
+
+  delay(100);
+
+  // while (FP_M.fpm_getUserNum() == 255) {
+  //   M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+  //   M5.Lcd.setCursor(0, 20);
+  //   M5.Lcd.setTextFont(2);
+  //   M5.Lcd.println("disable finger module");
+  //   delay(500);
+  // }
+
+  FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
+
+  SS_S.attach(TRIG, ECHO, RIRER, THERMISTOR);
+
+  while (!UM_S.SDEnable()) {
+    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("SD disable");
+    delay(500);
+  }
+
+  lcd.begin();
+  lcd.setBrightness(64);
+
+  delay(100);
+
+  tabName.setColorDepth(8);
+  tabName.createSprite(310, 60);
+  home.setColorDepth(8);
+  home.createSprite(lcd.width()-25, 180);
+  wifiImage.setColorDepth(8);
+  wifiImage.createSprite(25, 15);
+
+  delay(100);
+  Serial2.begin(19200, SERIAL_8N1, 3, 1);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
+  delay(1000);
+
+  // センサータスクの作成
+  xTaskCreate(
+      solderingSensorTask,        /* タスク関数 */
+      "solderingSensorTask",     /* タスク名 */
+      1000,        /* スタックサイズ */
+      NULL,         /* タスクのパラメータ */
+      2,            /* このタスクの優先度 */
+      NULL          /* タスクハンドル */
+  );
+
+  // WiFi接続確認のタスク作成
+  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 1, NULL);
+}
+
+void loop() {
+  switch (currentScreens) {
+    case STANDBY:
+     standbyScreen();
+     break;
+    case SETTING:
+     settingScreen();
+     break;
+    case SOLDERING:
+     solderingScreen();
+     break;
+    default:
+     break;
+  }
+  draw_btn("登録", "使用", "設定");
+  draw_home();
+  while(M5.BtnA.isPressed() || M5.BtnB.isPressed() || M5.BtnC.isPressed()) M5.update();
+  change = false;
+  M5.update();
+}
+
