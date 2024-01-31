@@ -1,3 +1,5 @@
+#include <NimBLEDevice.h>
+
 #include "config.h"
 #include "finger.h"
 #include "user_sd.h"
@@ -14,7 +16,7 @@
 #define ECHO 5
 #define RIRER 23
 #define THERMISTOR 35
-#define TURN_OFF_TIME (1000 * 60 * 5)
+#define TURN_OFF_TIME (10000 * 60 * 5)
 
 enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
@@ -87,7 +89,80 @@ void draw_btn(String tabA, String tabB, String tabC){
 * 待機画面表示メソッド
 */
 void draw_home(){
+  int logo_adjustH = 50;
+  int logo_adjustV = -13;
+
   home.clear(BLACK);
+  //KOTE
+  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+55, logo_adjustV+145, WHITE);  //K
+  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+70, logo_adjustV+25, WHITE);
+  home.drawLine(logo_adjustH+70, logo_adjustV+25, logo_adjustH+70, logo_adjustV+55, WHITE);
+  home.drawLine(logo_adjustH+70, logo_adjustV+55, logo_adjustH+100, logo_adjustV+25, WHITE);
+  home.drawLine(logo_adjustH+100, logo_adjustV+25, logo_adjustH+120, logo_adjustV+25, WHITE);
+  home.drawLine(logo_adjustH+120, logo_adjustV+25, logo_adjustH+85, logo_adjustV+65, WHITE);
+  home.drawLine(logo_adjustH+85, logo_adjustV+65, logo_adjustH+120, logo_adjustV+105, WHITE);
+  home.drawLine(logo_adjustH+120, logo_adjustV+105, logo_adjustH+180, logo_adjustV+105, WHITE);
+  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 35, 40, WHITE); //O
+  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 25, 30, WHITE);
+  home.drawLine(logo_adjustH+150, logo_adjustV+105, logo_adjustH+160, logo_adjustV+105, BLACK); //E
+  home.drawLine(logo_adjustH+180, logo_adjustV+105, logo_adjustH+180, logo_adjustV+115, WHITE);
+  home.drawLine(logo_adjustH+180, logo_adjustV+115, logo_adjustH+130, logo_adjustV+115, WHITE);
+  home.drawLine(logo_adjustH+130, logo_adjustV+115, logo_adjustH+130, logo_adjustV+130, WHITE);
+  home.drawLine(logo_adjustH+130, logo_adjustV+130, logo_adjustH+170, logo_adjustV+130, WHITE);
+  home.drawLine(logo_adjustH+170, logo_adjustV+130, logo_adjustH+170, logo_adjustV+140, WHITE);
+  home.drawLine(logo_adjustH+170, logo_adjustV+140, logo_adjustH+130, logo_adjustV+140, WHITE);
+  home.drawLine(logo_adjustH+130, logo_adjustV+140, logo_adjustH+130, logo_adjustV+160, WHITE);
+  home.drawLine(logo_adjustH+130, logo_adjustV+160, logo_adjustH+180, logo_adjustV+160, WHITE);
+  home.drawLine(logo_adjustH+180, logo_adjustV+160, logo_adjustH+180, logo_adjustV+170, WHITE);
+  home.drawLine(logo_adjustH+180, logo_adjustV+170, logo_adjustH+120, logo_adjustV+170, WHITE);
+  home.drawLine(logo_adjustH+120, logo_adjustV+170, logo_adjustH+120, logo_adjustV+115, WHITE);
+  home.drawLine(logo_adjustH+120, logo_adjustV+115, logo_adjustH+100, logo_adjustV+115, WHITE); //T
+  home.drawLine(logo_adjustH+100, logo_adjustV+115, logo_adjustH+100, logo_adjustV+175, WHITE);
+  home.drawLine(logo_adjustH+100, logo_adjustV+175, logo_adjustH+80, logo_adjustV+175, WHITE);
+  home.drawLine(logo_adjustH+80, logo_adjustV+175, logo_adjustH+80, logo_adjustV+120, WHITE);
+  home.drawLine(logo_adjustH+80, logo_adjustV+120, logo_adjustH+55, logo_adjustV+120, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+105, logo_adjustH+105, logo_adjustV+105, WHITE);  //K
+  home.drawLine(logo_adjustH+105, logo_adjustV+105, logo_adjustH+80, logo_adjustV+75, WHITE);
+  home.drawLine(logo_adjustH+80, logo_adjustV+75, logo_adjustH+70, logo_adjustV+80, WHITE);
+  home.drawLine(logo_adjustH+70, logo_adjustV+80, logo_adjustH+70, logo_adjustV+105, WHITE);
+  
+  //Alert
+  home.drawLine(logo_adjustH+55, logo_adjustV+145, logo_adjustH+45, logo_adjustV+150, WHITE); //A
+  home.drawLine(logo_adjustH+45, logo_adjustV+150, logo_adjustH+45, logo_adjustV+160, WHITE);
+  home.drawLine(logo_adjustH+45, logo_adjustV+160, logo_adjustH+55, logo_adjustV+165, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+165, logo_adjustH+55, logo_adjustV+170, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+170, logo_adjustH+15, logo_adjustV+160, WHITE);
+  home.drawLine(logo_adjustH+15, logo_adjustV+160, logo_adjustH+15, logo_adjustV+150, WHITE);
+  home.drawLine(logo_adjustH+15, logo_adjustV+150, logo_adjustH+55, logo_adjustV+140, WHITE);
+  home.drawLine(logo_adjustH+40, logo_adjustV+152, logo_adjustH+40, logo_adjustV+158, WHITE);
+  home.drawLine(logo_adjustH+40, logo_adjustV+158, logo_adjustH+25, logo_adjustV+155, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+155, logo_adjustH+40, logo_adjustV+152,WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+135, logo_adjustH+15, logo_adjustV+135, WHITE); //l
+  home.drawLine(logo_adjustH+15, logo_adjustV+135, logo_adjustH+15, logo_adjustV+125, WHITE);
+  home.drawLine(logo_adjustH+15, logo_adjustV+125, logo_adjustH+55, logo_adjustV+125, WHITE);
+  home.drawArc(logo_adjustH+40, logo_adjustV+105, 15, 8, 290, 270, WHITE);  //e
+  home.fillRect(logo_adjustH+35, logo_adjustV+95, 5, 20, BLACK);
+  home.drawLine(logo_adjustH+35, logo_adjustV+100, logo_adjustH+35, logo_adjustV+110, WHITE);
+  home.drawLine(logo_adjustH+40, logo_adjustV+97, logo_adjustH+40, logo_adjustV+113, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+85, logo_adjustH+25, logo_adjustV+85, WHITE);  //r
+  home.drawLine(logo_adjustH+25, logo_adjustV+85, logo_adjustH+25, logo_adjustV+75, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+75, logo_adjustH+55, logo_adjustV+75, WHITE);
+  home.drawArc(logo_adjustH+40, logo_adjustV+67, 15, 8, 110, 180, WHITE);
+  home.fillRect(logo_adjustH+28, logo_adjustV+75, 10, 7, BLACK);
+  home.drawArc(logo_adjustH+47, logo_adjustV+47, 8, 3, 315, 90, WHITE); //t
+  home.drawLine(logo_adjustH+47, logo_adjustV+45, logo_adjustH+47, logo_adjustV+55, BLACK);
+  home.drawLine(logo_adjustH+47, logo_adjustV+55, logo_adjustH+30, logo_adjustV+55, WHITE);
+  home.drawLine(logo_adjustH+30, logo_adjustV+55, logo_adjustH+30, logo_adjustV+60, WHITE);
+  home.drawLine(logo_adjustH+30, logo_adjustV+60, logo_adjustH+25, logo_adjustV+60, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+60, logo_adjustH+25, logo_adjustV+55, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+55, logo_adjustH+20, logo_adjustV+55, WHITE);
+  home.drawLine(logo_adjustH+20, logo_adjustV+55, logo_adjustH+20, logo_adjustV+50, WHITE);
+  home.drawLine(logo_adjustH+20, logo_adjustV+50, logo_adjustH+25, logo_adjustV+50, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+50, logo_adjustH+25, logo_adjustV+45, WHITE);
+  home.drawLine(logo_adjustH+25, logo_adjustV+45, logo_adjustH+30, logo_adjustV+45, WHITE);
+  home.drawLine(logo_adjustH+30, logo_adjustV+45, logo_adjustH+30, logo_adjustV+50, WHITE);
+  home.drawLine(logo_adjustH+30, logo_adjustV+50, logo_adjustH+47, logo_adjustV+50, WHITE);
+
   home.pushSprite(&lcd, 0, 0);
 }
 
@@ -503,6 +578,7 @@ void forgetTurnOffAlert() {
   String response = FT_S.functions_post(String(functionsUrl), String(alertEndpoint), postData);
 
   if (response != "Internal Server Error") {
+    delay(3000);
     //M5.Lcd.println("handa alert.");
   } else {
     M5.Lcd.println("Server Error.");
@@ -556,8 +632,8 @@ void solderingScreen() {
     home.setCursor(0, 0);
     home.print("使用者　：");
     home.println(fuserName);
-    home.print("温度　　：");
-    home.println(temperature);
+    // home.print("温度　　：");
+    // home.println(temperature);
     home.print("納刀時間：");
     home.println(returnTime);
     home.print("使用時間：");
@@ -599,7 +675,7 @@ void solderingScreen() {
       delay(1);
     }
 
-    if(returnTime >= timeOut){
+    if(returnTime >= TURN_OFF_TIME){
       if(wifiConnect){
         forgetTurnOffAlert();
         solderingFinish();
@@ -611,6 +687,7 @@ void solderingScreen() {
 }
 
 void setup() {
+  NimBLEDevice::init("KOTEAlert");
   Serial.begin(115200);
   delay(10);
 
