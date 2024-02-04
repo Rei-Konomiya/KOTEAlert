@@ -1,5 +1,3 @@
-#include <NimBLEDevice.h>
-
 #include "config.h"
 #include "finger.h"
 #include "user_sd.h"
@@ -687,7 +685,6 @@ void solderingScreen() {
 }
 
 void setup() {
-  NimBLEDevice::init("KOTEAlert");
   Serial.begin(115200);
   delay(10);
 
