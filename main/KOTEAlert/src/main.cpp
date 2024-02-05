@@ -297,7 +297,7 @@ void bleConnecting(){
 
   delay(100);
 
-  //NimBLEDevice::init("KOTEAlert");
+  NimBLEDevice::init("KOTEAlert");
 
   boolean BLEconnect = false;   //デバッグ用、実装時は置換する
   int periodCount = 0;
