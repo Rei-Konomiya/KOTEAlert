@@ -1,8 +1,6 @@
 #include "finger.h"
 
-#include <stdint.h>
 #include <Arduino.h>
-#include <M5Unified.h>
 
 FingerPrint::FingerPrint(void) {}
 
@@ -15,13 +13,13 @@ uint8_t FingerPrint::fpm_sendAndReceive(uint16_t timeout) {
     FP.RxCnt    = 0;
     FP.TxBuf[5] = 0;
 
-    Serial2.write(CMD_HEAD);
+    Serial2.write(FINGER_CMD_HEAD);
     for (i = 1; i < 6; i++) {
         Serial2.write(FP.TxBuf[i]);
         checkSum ^= FP.TxBuf[i];
     }
     Serial2.write(checkSum);
-    Serial2.write(CMD_TAIL);
+    Serial2.write(FINGER_CMD_TAIL);
 
     while (FP.RxCnt < 8 && timeout > 0) {
         delay(1);
@@ -39,79 +37,79 @@ uint8_t FingerPrint::fpm_sendAndReceive(uint16_t timeout) {
 
     if (FP.RxCnt != 8) {
         FP.RxCnt = 0;
-        return ACK_TIMEOUT;
+        return FINGER_ACK_TIMEOUT;
     }
-    if (FP.RxBuf[HEAD] != CMD_HEAD) return ACK_FAIL;
-    if (FP.RxBuf[TAIL] != CMD_TAIL) return ACK_FAIL;
-    if (FP.RxBuf[CMD] != (FP.TxBuf[CMD])) return ACK_FAIL;
+    if (FP.RxBuf[FINGER_HEAD] != FINGER_CMD_HEAD) return FINGER_ACK_FAIL;
+    if (FP.RxBuf[FINGER_TAIL] != FINGER_CMD_TAIL) return FINGER_ACK_FAIL;
+    if (FP.RxBuf[FINGER_CMD] != (FP.TxBuf[FINGER_CMD])) return FINGER_ACK_FAIL;
 
     checkSum = 0;
-    for (j = 1; j < CHK; j++) {
+    for (j = 1; j < FINGER_CHK; j++) {
         checkSum ^= FP.RxBuf[j];
     }
-    if (checkSum != FP.RxBuf[CHK]) {
-        return ACK_FAIL;
+    if (checkSum != FP.RxBuf[FINGER_CHK]) {
+        return FINGER_ACK_FAIL;
     }
-    return ACK_SUCCESS;
+    return FINGER_ACK_SUCCESS;
 }
 
 uint8_t FingerPrint::fpm_sleep(void) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_SLEEP_MODE;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = 0;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_SLEEP_MODE;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = 0;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(500);
 
-    if (res == ACK_SUCCESS) {
-        return ACK_SUCCESS;
+    if (res == FINGER_ACK_SUCCESS) {
+        return FINGER_ACK_SUCCESS;
     } else {
-        return ACK_FAIL;
+        return FINGER_ACK_FAIL;
     }
 }
 
 uint8_t FingerPrint::fpm_setAddMode(uint8_t fpm_mode) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_ADD_MODE;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = fpm_mode;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_ADD_MODE;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = fpm_mode;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(200);
 
-    if (res == ACK_SUCCESS && RxBuf[Q3] == ACK_SUCCESS) {
-        return ACK_SUCCESS;
+    if (res == FINGER_ACK_SUCCESS && RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+        return FINGER_ACK_SUCCESS;
     } else {
-        return ACK_FAIL;
+        return FINGER_ACK_FAIL;
     }
 }
 
 uint8_t FingerPrint::fpm_readAddMode(void) {
-    FP.TxBuf[CMD] = CMD_ADD_MODE;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = 0;
-    FP.TxBuf[P3]  = 0X01;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_ADD_MODE;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = 0;
+    FP.TxBuf[FINGER_P3]  = 0X01;
 
     fpm_sendAndReceive(200);
 
-    return FP.RxBuf[Q2];
+    return FP.RxBuf[FINGER_Q2];
 }
 
 uint16_t FingerPrint::fpm_getUserNum(void) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_USER_CNT;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = 0;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_USER_CNT;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = 0;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(200);
 
-    if (res == ACK_SUCCESS && RxBuf[Q3] == ACK_SUCCESS) {
-        return FP.RxBuf[Q2];
+    if (res == FINGER_ACK_SUCCESS && RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+        return FP.RxBuf[FINGER_Q2];
     } else {
         return 0XFF;
     }
@@ -120,59 +118,59 @@ uint16_t FingerPrint::fpm_getUserNum(void) {
 uint8_t FingerPrint::fpm_deleteAllUser(void) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_DEL_ALL;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = 0;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_DEL_ALL;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = 0;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(200);
 
-    if (res == ACK_SUCCESS && RxBuf[Q3] == ACK_SUCCESS) {
-        return ACK_SUCCESS;
+    if (res == FINGER_ACK_SUCCESS && RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+        return FINGER_ACK_SUCCESS;
     } else {
-        return ACK_FAIL;
+        return FINGER_ACK_FAIL;
     }
 }
 
 uint8_t FingerPrint::fpm_deleteUser(uint8_t userNum) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_DEL;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = userNum;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_DEL;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = userNum;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(200);
 
-    if (res == ACK_SUCCESS && RxBuf[Q3] == ACK_SUCCESS) {
-        return ACK_SUCCESS;
+    if (res == FINGER_ACK_SUCCESS && RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+        return FINGER_ACK_SUCCESS;
     } else {
-        return ACK_FAIL;
+        return FINGER_ACK_FAIL;
     }
 }
 
 uint8_t FingerPrint::fpm_addUser(uint8_t userNum, uint8_t userPermission) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_ADD_1;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = userNum;
-    FP.TxBuf[P3]  = userPermission;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_ADD_1;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = userNum;
+    FP.TxBuf[FINGER_P3]  = userPermission;
 
     res = fpm_sendAndReceive(3000);
 
-    if (res == ACK_SUCCESS) {
-        if (FP.RxBuf[Q3] == ACK_SUCCESS) {
-            FP.TxBuf[CMD] = CMD_ADD_2;
+    if (res == FINGER_ACK_SUCCESS) {
+        if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+            FP.TxBuf[FINGER_CMD] = FINGER_CMD_ADD_2;
 
             res = fpm_sendAndReceive(3000);
 
-            if (res == ACK_SUCCESS) {
-                if (FP.RxBuf[Q3] == ACK_SUCCESS) {
-                    FP.TxBuf[CMD] = CMD_ADD_3;
+            if (res == FINGER_ACK_SUCCESS) {
+                if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
+                    FP.TxBuf[FINGER_CMD] = FINGER_CMD_ADD_3;
                     res           = fpm_sendAndReceive(3000);
-                    if (res == ACK_SUCCESS) {
-                        return FP.RxBuf[Q3];
+                    if (res == FINGER_ACK_SUCCESS) {
+                        return FP.RxBuf[FINGER_Q3];
                     }
                 }
             }
@@ -184,23 +182,23 @@ uint8_t FingerPrint::fpm_addUser(uint8_t userNum, uint8_t userPermission) {
 uint8_t FingerPrint::fpm_compareFinger(void) {
     uint8_t res;
 
-    FP.TxBuf[CMD] = CMD_MATCH;
-    FP.TxBuf[P1]  = 0;
-    FP.TxBuf[P2]  = 0;
-    FP.TxBuf[P3]  = 0;
+    FP.TxBuf[FINGER_CMD] = FINGER_CMD_MATCH;
+    FP.TxBuf[FINGER_P1]  = 0;
+    FP.TxBuf[FINGER_P2]  = 0;
+    FP.TxBuf[FINGER_P3]  = 0;
 
     res = fpm_sendAndReceive(3000);
 
-    if (res == ACK_SUCCESS) {
-        if (FP.RxBuf[Q3] == ACK_NOUSER) {
-            return ACK_NOUSER;
+    if (res == FINGER_ACK_SUCCESS) {
+        if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_NOUSER) {
+            return FINGER_ACK_NOUSER;
         }
-        if (FP.RxBuf[Q3] == ACK_TIMEOUT) {
-            return ACK_TIMEOUT;
+        if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_TIMEOUT) {
+            return FINGER_ACK_TIMEOUT;
         }
-        if ((FP.RxBuf[Q2] != 0) &&
-            (FP.RxBuf[Q3] == 1 || FP.RxBuf[Q3] == 2 || FP.RxBuf[Q3] == 3)) {
-            return ACK_SUCCESS;
+        if ((FP.RxBuf[FINGER_Q2] != 0) &&
+            (FP.RxBuf[FINGER_Q3] == 1 || FP.RxBuf[FINGER_Q3] == 2 || FP.RxBuf[FINGER_Q3] == 3)) {
+            return FINGER_ACK_SUCCESS;
         }
     }
     return res;
@@ -209,19 +207,19 @@ uint8_t FingerPrint::fpm_compareFinger(void) {
 String FingerPrint::fpm_showAllUser() {
   uint8_t res;
 
-  FP.TxBuf[CMD] = CMD_ALL_USER;
-  FP.TxBuf[P1]  = 0;
-  FP.TxBuf[P2]  = 0;
-  FP.TxBuf[P3]  = 0;
+  FP.TxBuf[FINGER_CMD] = FINGER_CMD_ALL_USER;
+  FP.TxBuf[FINGER_P1]  = 0;
+  FP.TxBuf[FINGER_P2]  = 0;
+  FP.TxBuf[FINGER_P3]  = 0;
 
   res = fpm_sendAndReceive(200);
-  uint16_t dataLength = (FP.RxBuf[Q1] * 16 * 16) + FP.RxBuf[Q2];
+  uint16_t dataLength = (FP.RxBuf[FINGER_Q1] * 16 * 16) + FP.RxBuf[FINGER_Q2];
 
-  if (res == ACK_SUCCESS) {
-    if (FP.RxBuf[Q3] == ACK_FAIL) {
+  if (res == FINGER_ACK_SUCCESS) {
+    if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_FAIL) {
       return "User read failed.";
     }
-    if (FP.RxBuf[Q3] == ACK_SUCCESS) {
+    if (FP.RxBuf[FINGER_Q3] == FINGER_ACK_SUCCESS) {
       delay(100);
       return fpm_ReceiveLongData(dataLength);
       // String result = "";
@@ -232,7 +230,7 @@ String FingerPrint::fpm_showAllUser() {
       // return result;
     }
   }
-  return String(FP.RxBuf[Q3]);
+  return String(FP.RxBuf[FINGER_Q3]);
 }
 
 String FingerPrint::fpm_ReceiveLongData(uint16_t dataLength) {
@@ -242,7 +240,7 @@ String FingerPrint::fpm_ReceiveLongData(uint16_t dataLength) {
   uint8_t ch;
 
   if(Serial2.available()) {
-    if (Serial2.read() != CMD_HEAD) return "miss data";
+    if (Serial2.read() != FINGER_CMD_HEAD) return "miss data";
   }
 
   for (i = 0 ; i < dataLength ; i++) {
@@ -264,7 +262,7 @@ String FingerPrint::fpm_ReceiveLongData(uint16_t dataLength) {
   }
    if(Serial2.available()) {
     Serial2.read();
-    if (Serial2.read() != CMD_HEAD) return "miss data";
+    if (Serial2.read() != FINGER_CMD_HEAD) return "miss data";
   }
   return result;
 }
