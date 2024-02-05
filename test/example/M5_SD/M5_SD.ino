@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <M5Unified.h>
+#include <M5Stack.h>
 #include <SPI.h>
 #include <SD.h>
 
@@ -7,9 +7,11 @@ File myFile;
 
 void setup() {
 
-  auto cfg = M5.config();
-  cfg.clear_display = true;
-  M5.begin(cfg);
+  // auto cfg = M5.config();
+  // cfg.clear_display = true;
+  // M5.begin(cfg);
+
+  M5.begin();
 
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
@@ -53,9 +55,9 @@ void setup() {
   }
 
   // re-open the file for reading:
-  myFile = SD.open("/test.txt");  //add "/"
+  myFile = SD.open(filename);  //add "/"
   if (myFile) {
-    Serial.println("test.txt:");
+    Serial.println(filename);
 
     // read from the file until there's nothing else in it:
     while (myFile.available()) {
@@ -65,7 +67,8 @@ void setup() {
     myFile.close();
   } else {
     // if the file didn't open, print an error:
-    Serial.println("error opening test.txt");
+    Serial.print("error opening ");
+    Serial.println(filename);
   }
 }
 

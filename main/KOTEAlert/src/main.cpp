@@ -1,10 +1,12 @@
+#include <NimBLEDevice.h>
+
 #include "config.h"
 #include "finger.h"
 #include "user_sd.h"
 #include "functions.h"
 #include "soldering_sensor.h"
 #include <Arduino.h>
-#include <M5Unified.h>
+#include <M5Stack.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -18,6 +20,8 @@
 
 enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
+
+TaskHandle_t WiFiConnectionHandle; // WiFi接続監視タスクハンドル
 
 bool sensorDispFlg = false;   // センサー値を読み取るかどうか
 float temperature = 0.0;      // 温度
@@ -217,6 +221,14 @@ void WiFiConnect() {
   }
 }
 
+void WiFiDisconnect() {
+  vTaskDelete(WiFiConnectionHandle);
+  WiFi.disconnect();
+  while (WiFi.status() == WL_CONNECTED) {
+    delay(1000);
+  }
+}
+
 /*
 * 待機メソッド（delayではボタン判定ができないため代わりにこのメソッドを使う）
 * time : 待機時間
@@ -280,6 +292,13 @@ void bleReceive(){
 
 // BLE接続
 void bleConnecting(){
+
+  WiFiDisconnect();
+
+  delay(100);
+
+  //NimBLEDevice::init("KOTEAlert");
+
   boolean BLEconnect = false;   //デバッグ用、実装時は置換する
   int periodCount = 0;
   int timeCount = 0;
@@ -339,7 +358,7 @@ void fingerPrint(){
     home.pushSprite(&lcd, 0, 0);
     uint8_t fingeruid = userNum+1;
     uint8_t res     = FP_M.fpm_addUser(fingeruid, 1);
-    if (res == ACK_SUCCESS) {
+    if (res == FINGER_ACK_SUCCESS) {
       if (!UM_S.saveUserData(fingeruid, fuserID, fuserName)) {
         home.clear(BLACK);
         home.setCursor(0, 0);
@@ -356,7 +375,7 @@ void fingerPrint(){
         delay(1500);
         inited = true;
       }
-    } else if (res == ACK_FAIL) {
+    } else if (res == FINGER_ACK_FAIL) {
       home.clear(BLACK);
       home.setCursor(0, 0);
       home.println("登録に失敗しました");
@@ -500,7 +519,7 @@ void authenticateUser() {
   home.print("あててください");
   home.pushSprite(&lcd, 0, 0);
   uint8_t res = FP_M.fpm_compareFinger();
-  if (res == ACK_SUCCESS) {
+  if (res == FINGER_ACK_SUCCESS) {
     currentUID = FP_M.getUID();
     home.clear(BLACK);
     home.setCursor(0, 0);
@@ -522,7 +541,7 @@ void authenticateUser() {
       return;
     }
   }
-  if (res == ACK_NOUSER) {
+  if (res == FINGER_ACK_NOUSER) {
       home.clear(BLACK);
       home.setCursor(0, 0);
       home.println("認証に失敗しました");
@@ -531,7 +550,7 @@ void authenticateUser() {
       delay(2000);
       return;
   }
-  if (res == ACK_TIMEOUT) {
+  if (res == FINGER_ACK_TIMEOUT) {
       home.clear(BLACK);
       home.setCursor(0, 0);
       home.println("タイムアウトしました");
@@ -688,9 +707,11 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  auto cfg = M5.config();
-  cfg.clear_display = true;
-  M5.begin(cfg);
+  // auto cfg = M5.config();
+  // cfg.clear_display = true;
+  // M5.begin(cfg);
+
+  M5.begin();
 
   WiFiConnect();
 
@@ -734,16 +755,16 @@ void setup() {
 
   // センサータスクの作成
   xTaskCreate(
-      solderingSensorTask,        /* タスク関数 */
-      "solderingSensorTask",     /* タスク名 */
-      1000,        /* スタックサイズ */
-      NULL,         /* タスクのパラメータ */
-      2,            /* このタスクの優先度 */
-      NULL          /* タスクハンドル */
+    solderingSensorTask,        /* タスク関数 */
+    "solderingSensorTask",     /* タスク名 */
+    1000,        /* スタックサイズ */
+    NULL,         /* タスクのパラメータ */
+    2,            /* このタスクの優先度 */
+    NULL          /* タスクハンドル */
   );
 
   // WiFi接続確認のタスク作成
-  xTaskCreate(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 1, NULL);
+  xTaskCreateUniversal(WiFiConnectionTask, "WiFiConnectionTask", 1000, NULL, 1, &WiFiConnectionHandle, 1);
 }
 
 void loop() {
