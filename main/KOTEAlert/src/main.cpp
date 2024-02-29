@@ -1,4 +1,4 @@
-#include <NimBLEDevice.h>
+//#include <NimBLEDevice.h>
 
 #include "config.h"
 #include "finger.h"
@@ -246,8 +246,8 @@ void wait(int time){
 
 // BLEデータ受け取り
 void receive(){
-  fuserID = "0ATMiNgfn71RkoSu5zeL";       //ここでuid受け取り
-  fuserName = "黒田 直樹";    //ここでユーザー名受け取り
+  fuserID = "0ATMiNgfn71RkoSu5zaB";       //ここでuid受け取り
+  fuserName = "小沢 栞";    //ここでユーザー名受け取り
 }
 
 // BLEデータ受け取り待機
@@ -293,11 +293,11 @@ void bleReceive(){
 // BLE接続
 void bleConnecting(){
 
-  WiFiDisconnect();
+  //WiFiDisconnect();
 
   delay(100);
 
-  NimBLEDevice::init("KOTEAlert");
+  //NimBLEDevice::init("KOTEAlert");
 
   boolean BLEconnect = false;   //デバッグ用、実装時は置換する
   int periodCount = 0;
@@ -713,17 +713,21 @@ void setup() {
 
   M5.begin();
 
+  Serial2.begin(19200, SERIAL_8N1, 16, 17);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
+
+  delay(1000);
+
   WiFiConnect();
 
   delay(100);
 
-  // while (FP_M.fpm_getUserNum() == 255) {
-  //   M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
-  //   M5.Lcd.setCursor(0, 20);
-  //   M5.Lcd.setTextFont(2);
-  //   M5.Lcd.println("disable finger module");
-  //   delay(500);
-  // }
+  while (FP_M.fpm_getUserNum() == 255) {
+    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("disable finger module");
+    delay(500);
+  }
 
   FP_M.fpm_setAddMode(0x00);                  // 指紋データの重複を許す
 
@@ -750,8 +754,6 @@ void setup() {
   wifiImage.createSprite(25, 15);
 
   delay(100);
-  Serial2.begin(19200, SERIAL_8N1, 16, 17);     // 3ピンをRX(受信), 1ピンをTX(送信)にする
-  delay(1000);
 
   // センサータスクの作成
   xTaskCreate(
