@@ -21,6 +21,10 @@
 enum Screens {STANDBY, SETTING, SOLDERING};
 Screens currentScreens = STANDBY;
 
+const int SettingKinds = 2;
+String SettingTitles[] = {"ユーザー一覧", "ダークモード" };
+int selectingSettings = 0;
+
 TaskHandle_t WiFiConnectionHandle; // WiFi接続監視タスクハンドル
 
 bool sensorDispFlg = false;   // センサー値を読み取るかどうか
@@ -47,15 +51,21 @@ boolean change = false;
 boolean wifiConnect = false;
 
 
+boolean isDarkMode = true;
+
+int get_darkMode(boolean isReverse){
+  return (isDarkMode xor isReverse) == 0 ? 0xffff : 0x0000 ;
+}
+
 /*
 * Wi-Fiマークを表示するメソッド
 */
 void draw_wifi(){
-  wifiImage.clear(BLACK);
+  wifiImage.clear(get_darkMode(false));
   if(wifiConnect){
-    wifiImage.fillCircle(13, 13, 2, WHITE);
-    wifiImage.drawArc(13, 13, 7, 7, 215, 325, WHITE);
-    wifiImage.drawArc(13, 13, 13, 13, 215, 325, WHITE);
+    wifiImage.fillCircle(13, 13, 2, get_darkMode(true));
+    wifiImage.drawArc(13, 13, 7, 7, 215, 325, get_darkMode(true));
+    wifiImage.drawArc(13, 13, 13, 13, 215, 325, get_darkMode(true));
   }else{
     wifiImage.fillCircle(13, 13, 2, RED);
     wifiImage.drawArc(13, 13, 7, 7, 215, 325, RED);
@@ -71,13 +81,13 @@ void draw_wifi(){
 */
 void draw_btn(String tabA, String tabB, String tabC){
   draw_wifi();
-  tabName.clear(BLACK);
+  tabName.clear(get_darkMode(false));
   String btnName[] = {tabA, tabB, tabC};
   for(int i=0; i<3; i++){
     if(btnName[i] != ""){
       tabName.fillRoundRect (105*i, 0, 100, 100, 20, DARKCYAN);
-      tabName.fillRoundRect (105*i+2, 2, 96, 96, 18, BLACK);
-      tabName.setTextColor(WHITE);
+      tabName.fillRoundRect (105*i+2, 2, 96, 96, 18, get_darkMode(false));
+      tabName.setTextColor(get_darkMode(true));
       
       tabName.setFont(&fonts::lgfxJapanGothic_36);
       tabName.setCursor(105*i+14, 13);
@@ -94,76 +104,76 @@ void draw_home(){
   int logo_adjustH = 50;
   int logo_adjustV = -13;
 
-  home.clear(BLACK);
+  home.clear(get_darkMode(false));
   //KOTE
-  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+55, logo_adjustV+145, WHITE);  //K
-  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+70, logo_adjustV+25, WHITE);
-  home.drawLine(logo_adjustH+70, logo_adjustV+25, logo_adjustH+70, logo_adjustV+55, WHITE);
-  home.drawLine(logo_adjustH+70, logo_adjustV+55, logo_adjustH+100, logo_adjustV+25, WHITE);
-  home.drawLine(logo_adjustH+100, logo_adjustV+25, logo_adjustH+120, logo_adjustV+25, WHITE);
-  home.drawLine(logo_adjustH+120, logo_adjustV+25, logo_adjustH+85, logo_adjustV+65, WHITE);
-  home.drawLine(logo_adjustH+85, logo_adjustV+65, logo_adjustH+120, logo_adjustV+105, WHITE);
-  home.drawLine(logo_adjustH+120, logo_adjustV+105, logo_adjustH+180, logo_adjustV+105, WHITE);
-  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 35, 40, WHITE); //O
-  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 25, 30, WHITE);
-  home.drawLine(logo_adjustH+150, logo_adjustV+105, logo_adjustH+160, logo_adjustV+105, BLACK); //E
-  home.drawLine(logo_adjustH+180, logo_adjustV+105, logo_adjustH+180, logo_adjustV+115, WHITE);
-  home.drawLine(logo_adjustH+180, logo_adjustV+115, logo_adjustH+130, logo_adjustV+115, WHITE);
-  home.drawLine(logo_adjustH+130, logo_adjustV+115, logo_adjustH+130, logo_adjustV+130, WHITE);
-  home.drawLine(logo_adjustH+130, logo_adjustV+130, logo_adjustH+170, logo_adjustV+130, WHITE);
-  home.drawLine(logo_adjustH+170, logo_adjustV+130, logo_adjustH+170, logo_adjustV+140, WHITE);
-  home.drawLine(logo_adjustH+170, logo_adjustV+140, logo_adjustH+130, logo_adjustV+140, WHITE);
-  home.drawLine(logo_adjustH+130, logo_adjustV+140, logo_adjustH+130, logo_adjustV+160, WHITE);
-  home.drawLine(logo_adjustH+130, logo_adjustV+160, logo_adjustH+180, logo_adjustV+160, WHITE);
-  home.drawLine(logo_adjustH+180, logo_adjustV+160, logo_adjustH+180, logo_adjustV+170, WHITE);
-  home.drawLine(logo_adjustH+180, logo_adjustV+170, logo_adjustH+120, logo_adjustV+170, WHITE);
-  home.drawLine(logo_adjustH+120, logo_adjustV+170, logo_adjustH+120, logo_adjustV+115, WHITE);
-  home.drawLine(logo_adjustH+120, logo_adjustV+115, logo_adjustH+100, logo_adjustV+115, WHITE); //T
-  home.drawLine(logo_adjustH+100, logo_adjustV+115, logo_adjustH+100, logo_adjustV+175, WHITE);
-  home.drawLine(logo_adjustH+100, logo_adjustV+175, logo_adjustH+80, logo_adjustV+175, WHITE);
-  home.drawLine(logo_adjustH+80, logo_adjustV+175, logo_adjustH+80, logo_adjustV+120, WHITE);
-  home.drawLine(logo_adjustH+80, logo_adjustV+120, logo_adjustH+55, logo_adjustV+120, WHITE);
-  home.drawLine(logo_adjustH+55, logo_adjustV+105, logo_adjustH+105, logo_adjustV+105, WHITE);  //K
-  home.drawLine(logo_adjustH+105, logo_adjustV+105, logo_adjustH+80, logo_adjustV+75, WHITE);
-  home.drawLine(logo_adjustH+80, logo_adjustV+75, logo_adjustH+70, logo_adjustV+80, WHITE);
-  home.drawLine(logo_adjustH+70, logo_adjustV+80, logo_adjustH+70, logo_adjustV+105, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+55, logo_adjustV+145, get_darkMode(true));  //K
+  home.drawLine(logo_adjustH+55, logo_adjustV+25, logo_adjustH+70, logo_adjustV+25, get_darkMode(true));
+  home.drawLine(logo_adjustH+70, logo_adjustV+25, logo_adjustH+70, logo_adjustV+55, get_darkMode(true));
+  home.drawLine(logo_adjustH+70, logo_adjustV+55, logo_adjustH+100, logo_adjustV+25, get_darkMode(true));
+  home.drawLine(logo_adjustH+100, logo_adjustV+25, logo_adjustH+120, logo_adjustV+25, get_darkMode(true));
+  home.drawLine(logo_adjustH+120, logo_adjustV+25, logo_adjustH+85, logo_adjustV+65, get_darkMode(true));
+  home.drawLine(logo_adjustH+85, logo_adjustV+65, logo_adjustH+120, logo_adjustV+105, get_darkMode(true));
+  home.drawLine(logo_adjustH+120, logo_adjustV+105, logo_adjustH+180, logo_adjustV+105, get_darkMode(true));
+  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 35, 40, get_darkMode(true)); //O
+  home.drawEllipse (logo_adjustH+155, logo_adjustV+65, 25, 30, get_darkMode(true));
+  home.drawLine(logo_adjustH+150, logo_adjustV+105, logo_adjustH+160, logo_adjustV+105, get_darkMode(false)); //E
+  home.drawLine(logo_adjustH+180, logo_adjustV+105, logo_adjustH+180, logo_adjustV+115, get_darkMode(true));
+  home.drawLine(logo_adjustH+180, logo_adjustV+115, logo_adjustH+130, logo_adjustV+115, get_darkMode(true));
+  home.drawLine(logo_adjustH+130, logo_adjustV+115, logo_adjustH+130, logo_adjustV+130, get_darkMode(true));
+  home.drawLine(logo_adjustH+130, logo_adjustV+130, logo_adjustH+170, logo_adjustV+130, get_darkMode(true));
+  home.drawLine(logo_adjustH+170, logo_adjustV+130, logo_adjustH+170, logo_adjustV+140, get_darkMode(true));
+  home.drawLine(logo_adjustH+170, logo_adjustV+140, logo_adjustH+130, logo_adjustV+140, get_darkMode(true));
+  home.drawLine(logo_adjustH+130, logo_adjustV+140, logo_adjustH+130, logo_adjustV+160, get_darkMode(true));
+  home.drawLine(logo_adjustH+130, logo_adjustV+160, logo_adjustH+180, logo_adjustV+160, get_darkMode(true));
+  home.drawLine(logo_adjustH+180, logo_adjustV+160, logo_adjustH+180, logo_adjustV+170, get_darkMode(true));
+  home.drawLine(logo_adjustH+180, logo_adjustV+170, logo_adjustH+120, logo_adjustV+170, get_darkMode(true));
+  home.drawLine(logo_adjustH+120, logo_adjustV+170, logo_adjustH+120, logo_adjustV+115, get_darkMode(true));
+  home.drawLine(logo_adjustH+120, logo_adjustV+115, logo_adjustH+100, logo_adjustV+115, get_darkMode(true)); //T
+  home.drawLine(logo_adjustH+100, logo_adjustV+115, logo_adjustH+100, logo_adjustV+175, get_darkMode(true));
+  home.drawLine(logo_adjustH+100, logo_adjustV+175, logo_adjustH+80, logo_adjustV+175, get_darkMode(true));
+  home.drawLine(logo_adjustH+80, logo_adjustV+175, logo_adjustH+80, logo_adjustV+120, get_darkMode(true));
+  home.drawLine(logo_adjustH+80, logo_adjustV+120, logo_adjustH+55, logo_adjustV+120, get_darkMode(true));
+  home.drawLine(logo_adjustH+55, logo_adjustV+105, logo_adjustH+105, logo_adjustV+105, get_darkMode(true));  //K
+  home.drawLine(logo_adjustH+105, logo_adjustV+105, logo_adjustH+80, logo_adjustV+75, get_darkMode(true));
+  home.drawLine(logo_adjustH+80, logo_adjustV+75, logo_adjustH+70, logo_adjustV+80, get_darkMode(true));
+  home.drawLine(logo_adjustH+70, logo_adjustV+80, logo_adjustH+70, logo_adjustV+105, get_darkMode(true));
   
   //Alert
-  home.drawLine(logo_adjustH+55, logo_adjustV+145, logo_adjustH+45, logo_adjustV+150, WHITE); //A
-  home.drawLine(logo_adjustH+45, logo_adjustV+150, logo_adjustH+45, logo_adjustV+160, WHITE);
-  home.drawLine(logo_adjustH+45, logo_adjustV+160, logo_adjustH+55, logo_adjustV+165, WHITE);
-  home.drawLine(logo_adjustH+55, logo_adjustV+165, logo_adjustH+55, logo_adjustV+170, WHITE);
-  home.drawLine(logo_adjustH+55, logo_adjustV+170, logo_adjustH+15, logo_adjustV+160, WHITE);
-  home.drawLine(logo_adjustH+15, logo_adjustV+160, logo_adjustH+15, logo_adjustV+150, WHITE);
-  home.drawLine(logo_adjustH+15, logo_adjustV+150, logo_adjustH+55, logo_adjustV+140, WHITE);
-  home.drawLine(logo_adjustH+40, logo_adjustV+152, logo_adjustH+40, logo_adjustV+158, WHITE);
-  home.drawLine(logo_adjustH+40, logo_adjustV+158, logo_adjustH+25, logo_adjustV+155, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+155, logo_adjustH+40, logo_adjustV+152,WHITE);
-  home.drawLine(logo_adjustH+55, logo_adjustV+135, logo_adjustH+15, logo_adjustV+135, WHITE); //l
-  home.drawLine(logo_adjustH+15, logo_adjustV+135, logo_adjustH+15, logo_adjustV+125, WHITE);
-  home.drawLine(logo_adjustH+15, logo_adjustV+125, logo_adjustH+55, logo_adjustV+125, WHITE);
-  home.drawArc(logo_adjustH+40, logo_adjustV+105, 15, 8, 290, 270, WHITE);  //e
-  home.fillRect(logo_adjustH+35, logo_adjustV+95, 5, 20, BLACK);
-  home.drawLine(logo_adjustH+35, logo_adjustV+100, logo_adjustH+35, logo_adjustV+110, WHITE);
-  home.drawLine(logo_adjustH+40, logo_adjustV+97, logo_adjustH+40, logo_adjustV+113, WHITE);
-  home.drawLine(logo_adjustH+55, logo_adjustV+85, logo_adjustH+25, logo_adjustV+85, WHITE);  //r
-  home.drawLine(logo_adjustH+25, logo_adjustV+85, logo_adjustH+25, logo_adjustV+75, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+75, logo_adjustH+55, logo_adjustV+75, WHITE);
-  home.drawArc(logo_adjustH+40, logo_adjustV+67, 15, 8, 110, 180, WHITE);
-  home.fillRect(logo_adjustH+28, logo_adjustV+75, 10, 7, BLACK);
-  home.drawArc(logo_adjustH+47, logo_adjustV+47, 8, 3, 315, 90, WHITE); //t
-  home.drawLine(logo_adjustH+47, logo_adjustV+45, logo_adjustH+47, logo_adjustV+55, BLACK);
-  home.drawLine(logo_adjustH+47, logo_adjustV+55, logo_adjustH+30, logo_adjustV+55, WHITE);
-  home.drawLine(logo_adjustH+30, logo_adjustV+55, logo_adjustH+30, logo_adjustV+60, WHITE);
-  home.drawLine(logo_adjustH+30, logo_adjustV+60, logo_adjustH+25, logo_adjustV+60, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+60, logo_adjustH+25, logo_adjustV+55, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+55, logo_adjustH+20, logo_adjustV+55, WHITE);
-  home.drawLine(logo_adjustH+20, logo_adjustV+55, logo_adjustH+20, logo_adjustV+50, WHITE);
-  home.drawLine(logo_adjustH+20, logo_adjustV+50, logo_adjustH+25, logo_adjustV+50, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+50, logo_adjustH+25, logo_adjustV+45, WHITE);
-  home.drawLine(logo_adjustH+25, logo_adjustV+45, logo_adjustH+30, logo_adjustV+45, WHITE);
-  home.drawLine(logo_adjustH+30, logo_adjustV+45, logo_adjustH+30, logo_adjustV+50, WHITE);
-  home.drawLine(logo_adjustH+30, logo_adjustV+50, logo_adjustH+47, logo_adjustV+50, WHITE);
+  home.drawLine(logo_adjustH+55, logo_adjustV+145, logo_adjustH+45, logo_adjustV+150, get_darkMode(true)); //A
+  home.drawLine(logo_adjustH+45, logo_adjustV+150, logo_adjustH+45, logo_adjustV+160, get_darkMode(true));
+  home.drawLine(logo_adjustH+45, logo_adjustV+160, logo_adjustH+55, logo_adjustV+165, get_darkMode(true));
+  home.drawLine(logo_adjustH+55, logo_adjustV+165, logo_adjustH+55, logo_adjustV+170, get_darkMode(true));
+  home.drawLine(logo_adjustH+55, logo_adjustV+170, logo_adjustH+15, logo_adjustV+160, get_darkMode(true));
+  home.drawLine(logo_adjustH+15, logo_adjustV+160, logo_adjustH+15, logo_adjustV+150, get_darkMode(true));
+  home.drawLine(logo_adjustH+15, logo_adjustV+150, logo_adjustH+55, logo_adjustV+140, get_darkMode(true));
+  home.drawLine(logo_adjustH+40, logo_adjustV+152, logo_adjustH+40, logo_adjustV+158, get_darkMode(true));
+  home.drawLine(logo_adjustH+40, logo_adjustV+158, logo_adjustH+25, logo_adjustV+155, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+155, logo_adjustH+40, logo_adjustV+152,get_darkMode(true));
+  home.drawLine(logo_adjustH+55, logo_adjustV+135, logo_adjustH+15, logo_adjustV+135, get_darkMode(true)); //l
+  home.drawLine(logo_adjustH+15, logo_adjustV+135, logo_adjustH+15, logo_adjustV+125, get_darkMode(true));
+  home.drawLine(logo_adjustH+15, logo_adjustV+125, logo_adjustH+55, logo_adjustV+125, get_darkMode(true));
+  home.drawArc(logo_adjustH+40, logo_adjustV+105, 15, 8, 290, 270, get_darkMode(true));  //e
+  home.fillRect(logo_adjustH+35, logo_adjustV+95, 5, 20, get_darkMode(false));
+  home.drawLine(logo_adjustH+35, logo_adjustV+100, logo_adjustH+35, logo_adjustV+110, get_darkMode(true));
+  home.drawLine(logo_adjustH+40, logo_adjustV+97, logo_adjustH+40, logo_adjustV+113, get_darkMode(true));
+  home.drawLine(logo_adjustH+55, logo_adjustV+85, logo_adjustH+25, logo_adjustV+85, get_darkMode(true));  //r
+  home.drawLine(logo_adjustH+25, logo_adjustV+85, logo_adjustH+25, logo_adjustV+75, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+75, logo_adjustH+55, logo_adjustV+75, get_darkMode(true));
+  home.drawArc(logo_adjustH+40, logo_adjustV+67, 15, 8, 110, 180, get_darkMode(true));
+  home.fillRect(logo_adjustH+28, logo_adjustV+75, 10, 7, get_darkMode(false));
+  home.drawArc(logo_adjustH+47, logo_adjustV+47, 8, 3, 315, 90, get_darkMode(true)); //t
+  home.drawLine(logo_adjustH+47, logo_adjustV+45, logo_adjustH+47, logo_adjustV+55, get_darkMode(false));
+  home.drawLine(logo_adjustH+47, logo_adjustV+55, logo_adjustH+30, logo_adjustV+55, get_darkMode(true));
+  home.drawLine(logo_adjustH+30, logo_adjustV+55, logo_adjustH+30, logo_adjustV+60, get_darkMode(true));
+  home.drawLine(logo_adjustH+30, logo_adjustV+60, logo_adjustH+25, logo_adjustV+60, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+60, logo_adjustH+25, logo_adjustV+55, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+55, logo_adjustH+20, logo_adjustV+55, get_darkMode(true));
+  home.drawLine(logo_adjustH+20, logo_adjustV+55, logo_adjustH+20, logo_adjustV+50, get_darkMode(true));
+  home.drawLine(logo_adjustH+20, logo_adjustV+50, logo_adjustH+25, logo_adjustV+50, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+50, logo_adjustH+25, logo_adjustV+45, get_darkMode(true));
+  home.drawLine(logo_adjustH+25, logo_adjustV+45, logo_adjustH+30, logo_adjustV+45, get_darkMode(true));
+  home.drawLine(logo_adjustH+30, logo_adjustV+45, logo_adjustH+30, logo_adjustV+50, get_darkMode(true));
+  home.drawLine(logo_adjustH+30, logo_adjustV+50, logo_adjustH+47, logo_adjustV+50, get_darkMode(true));
 
   home.pushSprite(&lcd, 0, 0);
 }
@@ -217,8 +227,13 @@ void WiFiConnectionTask(void *parameter) {
 void WiFiConnect() {
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
+    M5.Lcd.fillRect(0, 0, 350, 300, get_darkMode(false));
+    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("Wifi-connecting...");
     delay(1000);
   }
+  M5.Lcd.fillRect(0, 0, 350, 300, get_darkMode(false));
 }
 
 void WiFiDisconnect() {
@@ -226,6 +241,89 @@ void WiFiDisconnect() {
   WiFi.disconnect();
   while (WiFi.status() == WL_CONNECTED) {
     delay(1000);
+  }
+}
+
+// 設定一覧
+void showSettingList(){
+  home.setFont(&fonts::lgfxJapanGothic_24);
+  home.clear(get_darkMode(false));
+  home.setCursor(0, 15);
+
+  for(int i=0; i< SettingKinds; i++){
+    if(selectingSettings == i) {
+      home.setTextColor(DARKCYAN, get_darkMode(false));
+    }
+    else{
+      home.setTextColor(get_darkMode(true), get_darkMode(false)); 
+    }
+    home.println(SettingTitles[i]);
+  }
+  
+  home.pushSprite(&lcd, 0, 0);
+  home.setTextColor(get_darkMode(true), get_darkMode(false));
+}
+
+// メンバー一覧
+void showMembers(){
+  while(M5.BtnA.isPressed() || M5.BtnB.isPressed() || M5.BtnC.isPressed()) M5.update();
+  draw_btn("", "", "戻る");
+  while(M5.BtnC.isReleased()){
+    home.clear(get_darkMode(false));
+    home.setCursor(0, 15);
+    home.println("1:" + fuserName);
+    home.pushSprite(&lcd, 0, 0);
+    M5.update();
+  }
+}
+
+// ダークモード設定
+void setDarkMode(){
+  while(M5.BtnA.isPressed() || M5.BtnB.isPressed() || M5.BtnC.isPressed()) M5.update();
+  while(M5.BtnC.isReleased()){
+    draw_btn("変更", "", "戻る");
+    home.clear(get_darkMode(false));
+    home.setCursor(0, 15);
+    home.println("ダークモード："+ isDarkMode ? "ON" : "OFF");
+    home.setTextColor(get_darkMode(true), get_darkMode(false));
+    home.pushSprite(&lcd, 0, 0);
+
+    M5.update();
+    if (M5.BtnA.wasPressed()) {
+      isDarkMode = !isDarkMode;
+      lcd.fillScreen(get_darkMode(false));
+    }
+  }
+}
+
+// 設定選択認識
+void setOption(){
+  home.clear(get_darkMode(false));
+  home.setCursor(0, 15);
+  switch(selectingSettings){
+    case 0 : showMembers(); break;
+    case 1 : setDarkMode(); break;
+  }
+  showSettingList();
+}
+
+// 設定画面
+void settingScreen() {
+  while(M5.BtnA.isPressed() || M5.BtnB.isPressed() || M5.BtnC.isPressed()) M5.update();
+  while(M5.BtnC.isReleased()){
+    showSettingList();
+    M5.update();
+    if (M5.BtnA.wasPressed()) {
+      ++selectingSettings %= SettingKinds;
+      showSettingList();
+    }
+    else if (M5.BtnB.wasPressed()) {
+      setOption();
+    }
+    else if (M5.BtnC.wasPressed()) {
+      currentScreens = STANDBY;
+    }
+    home.pushSprite(&lcd, 0, 0);
   }
 }
 
@@ -258,7 +356,7 @@ void bleReceive(){
   const int timeout = 10;
 
   while(!received){
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("データを");
     home.print("受け取っています");
@@ -268,7 +366,7 @@ void bleReceive(){
     wait(1000);
     timeCount++;
     if(timeCount >= timeout){
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("タイムアウトしました");
       home.println("ホーム画面に戻ります");
@@ -283,7 +381,7 @@ void bleReceive(){
     if(M5.BtnA.isPressed()) received = true;
   }
   receive();
-  home.clear(BLACK);
+  home.clear(get_darkMode(false));
   home.setCursor(0, 0);
   home.println("ユーザー情報　受取完了");
   home.pushSprite(&lcd, 0, 0);
@@ -305,7 +403,7 @@ void bleConnecting(){
   const int timeout = 10;
 
   while(!BLEconnect){
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("スマホとBluetoothを");
     home.print("接続してください");
@@ -315,7 +413,7 @@ void bleConnecting(){
     wait(1000);
     timeCount++;
     if(timeCount >= timeout){
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("タイムアウトしました");
       home.println("ホーム画面に戻ります");
@@ -330,7 +428,7 @@ void bleConnecting(){
     if(M5.BtnA.isPressed()) BLEconnect = true;
   }
   
-  home.clear(BLACK);
+  home.clear(get_darkMode(false));
   home.setCursor(0, 0);
   home.println("Bluetooth接続完了");
   home.pushSprite(&lcd, 0, 0);
@@ -349,7 +447,7 @@ void fingerPrint(){
   if (userNum == 255) return;
 
   while(!inited){
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("指紋を登録します");
     home.println("センサーに指を");
@@ -360,7 +458,7 @@ void fingerPrint(){
     uint8_t res     = FP_M.fpm_addUser(fingeruid, 1);
     if (res == FINGER_ACK_SUCCESS) {
       if (!UM_S.saveUserData(fingeruid, fuserID, fuserName)) {
-        home.clear(BLACK);
+        home.clear(get_darkMode(false));
         home.setCursor(0, 0);
         home.println("SDカードに書き込めませんでした");
         home.pushSprite(&lcd, 0, 0);
@@ -368,7 +466,7 @@ void fingerPrint(){
         delay(2000);
         change = true;
       } else {
-        home.clear(BLACK);
+        home.clear(get_darkMode(false));
         home.setCursor(0, 0);
         home.println("指紋情報　登録完了");
         home.pushSprite(&lcd, 0, 0);
@@ -376,7 +474,7 @@ void fingerPrint(){
         inited = true;
       }
     } else if (res == FINGER_ACK_FAIL) {
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("登録に失敗しました");
       home.println("再度登録する場合は");
@@ -400,7 +498,7 @@ void fingerPrint(){
         }
       }
     } else {
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("タイムアウトしました");
       home.println("再度登録する場合は");
@@ -424,7 +522,7 @@ void fingerPrint(){
       }
     }
     if(initFail){
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("登録に失敗しました");
       home.println("再度登録する場合は");
@@ -479,7 +577,7 @@ void solderingStart() {
   fuserName = doc["functionsUserName"].as<String>();
 
   if (WiFi.status() != WL_CONNECTED) {
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("WiFi接続されていません");
     home.pushSprite(&lcd, 0, 0);
@@ -512,7 +610,7 @@ void solderingStart() {
 // ユーザー認証
 void authenticateUser() {
   home.setFont(&fonts::lgfxJapanGothic_24);
-  home.clear(BLACK);
+  home.clear(get_darkMode(false));
   home.setCursor(0, 0);
   home.println("指紋認証を行います");
   home.println("センサーに指を");
@@ -521,7 +619,7 @@ void authenticateUser() {
   uint8_t res = FP_M.fpm_compareFinger();
   if (res == FINGER_ACK_SUCCESS) {
     currentUID = FP_M.getUID();
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("認証成功");
     //home.println(String(currentUID));
@@ -531,7 +629,7 @@ void authenticateUser() {
       solderingStart();
       delay(1000);
     } else {
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("モジュールには登録されていますが、");
       home.println("SDカードに保存されていません");
@@ -542,7 +640,7 @@ void authenticateUser() {
     }
   }
   if (res == FINGER_ACK_NOUSER) {
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("認証に失敗しました");
       home.println("ホーム画面に戻ります");
@@ -551,7 +649,7 @@ void authenticateUser() {
       return;
   }
   if (res == FINGER_ACK_TIMEOUT) {
-      home.clear(BLACK);
+      home.clear(get_darkMode(false));
       home.setCursor(0, 0);
       home.println("タイムアウトしました");
       home.println("ホーム画面に戻ります");
@@ -569,7 +667,7 @@ void solderingFinish() {
   String response = FT_S.functions_post(String(functionsUrl), String(endEndpoint), postData);
 
   if (response != "Internal Server Error") {
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.println("KOTEの使用を");
     home.println("終了しました");
@@ -585,7 +683,7 @@ void solderingFinish() {
 // はんだごて切り忘れ通知
 void forgetTurnOffAlert() {
   draw_btn("", "", "");
-  home.clear(BLACK);
+  home.clear(get_darkMode(false));
   home.setCursor(0, 0);
   home.println("放置時間が一定時間");
   home.println("を超えたため");
@@ -611,25 +709,28 @@ void standbyScreen() {
     registerUser();
   }
   if (M5.BtnB.wasPressed()) {
+    draw_btn("", "", "中止");
     authenticateUser();
   }
   if (M5.BtnC.wasPressed()) {
-    //currentScreens = SETTING;
+    draw_btn("選択", "決定", "戻る");
+    home.setCursor(0, 0);
+    settingScreen();
   }
 }
 
 // 設定画面
-void settingScreen() {
-  if (M5.BtnA.wasPressed()) {
-    //FP_M.fpm_showAllUser();
-  }
-  if (M5.BtnB.wasPressed()) {
-    // 空き
-  }
-  if (M5.BtnC.wasPressed()) {
-    currentScreens = STANDBY;
-  }
-}
+// void settingScreen() {
+//   if (M5.BtnA.wasPressed()) {
+//     //FP_M.fpm_showAllUser();
+//   }
+//   if (M5.BtnB.wasPressed()) {
+//     // 空き
+//   }
+//   if (M5.BtnC.wasPressed()) {
+//     currentScreens = STANDBY;
+//   }
+// }
 
 // はんだごて使用中画面
 void solderingScreen() {
@@ -645,7 +746,7 @@ void solderingScreen() {
   while(true){
     returnTime = (int)((millis() - returnStartTime) / 1000 + 0.5);
     useTime = (int)((millis() - startTime) / 1000 + 0.5);
-    home.clear(BLACK);
+    home.clear(get_darkMode(false));
     home.setCursor(0, 0);
     home.print("使用者　：");
     home.println(fuserName);
@@ -660,7 +761,7 @@ void solderingScreen() {
     for(int i=0; i<1000; i++){
       M5.update();
       if(M5.BtnA.wasPressed()){
-        home.clear(BLACK);
+        home.clear(get_darkMode(false));
         home.setCursor(0, 0);
         home.println("KOTEの使用を");
         home.println("終了しますか？");
@@ -670,7 +771,7 @@ void solderingScreen() {
         while(true){
           M5.update();
           if(M5.BtnA.wasPressed()){
-            home.clear(BLACK);
+            home.clear(get_darkMode(false));
             home.setCursor(0, 0);
             home.println("KOTEの使用を");
             home.println("終了します");
@@ -680,7 +781,7 @@ void solderingScreen() {
             return;
           }
           if(M5.BtnB.wasPressed()){
-            home.clear(BLACK);
+            home.clear(get_darkMode(false));
             home.setCursor(0, 0);
             home.println("KOTEを使用続行します");
             home.pushSprite(&lcd, 0, 0);
@@ -722,7 +823,7 @@ void setup() {
   delay(100);
 
   while (FP_M.fpm_getUserNum() == 255) {
-    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+    M5.Lcd.fillRect(0, 0, 350, 300, get_darkMode(false));
     M5.Lcd.setCursor(0, 20);
     M5.Lcd.setTextFont(2);
     M5.Lcd.println("disable finger module");
@@ -734,7 +835,7 @@ void setup() {
   SS_S.attach(TRIG, ECHO, RIRER, THERMISTOR);
 
   while (!UM_S.SDEnable()) {
-    M5.Lcd.fillRect(0, 0, 350, 300, BLACK);
+    M5.Lcd.fillRect(0, 0, 350, 300, get_darkMode(false));
     M5.Lcd.setCursor(0, 20);
     M5.Lcd.setTextFont(2);
     M5.Lcd.println("SD disable");
